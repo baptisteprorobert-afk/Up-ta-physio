@@ -443,7 +443,7 @@ const TOP_JOURNALS = /am j sports med|br j sports med|jospt|sports med|lancet|ja
 // car un article a besoin de temps pour accumuler des citations — c'est le principe même du
 // consensus scientifique. Complètement indépendant du pool général (limité à 120 jours).
 const MUST_READ_WINDOW_DAYS = 1095;
-const MUST_READ_CACHE_KEY = "kine-mustread-cache-v1";
+const MUST_READ_CACHE_KEY = "kine-mustread-cache-v2";
 // Gardé pour le petit badge "📈 citations" affiché sur les cartes ailleurs dans l'app (indépendant
 // de l'onglet Incontournables lui-même, qui a sa propre logique dédiée ci-dessus).
 const TRENDING_THRESHOLD = 3;
@@ -1094,6 +1094,29 @@ async function semanticScholarSearchByCitations(zone, minIso, maxIso){
   } catch(e){ return []; }
 }
 
+// Recherche directe par auteur suivi, spécifique à Incontournables : ne dépend pas du pool général
+// (ARTICLES) déjà rempli ou non — sinon, ouvrir cet onglet avant d'avoir fait une recherche sur
+// Accueil laissait passer à côté des articles d'auteurs suivis malgré un nombre de citations suffisant.
+async function europePmcSearchAuthorCitations(author, minIso, maxIso){
+  const q = `AUTH:"${author.surname}" AND (sport OR athlete OR physiotherapy OR "physical therapy" OR rehabilitation) AND FIRST_PDATE:[${minIso} TO ${maxIso}]`;
+  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=10&resultType=core&sort=CITED_BY_COUNT%20desc`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data?.resultList?.result || []).map(r => {
+      const journal = r.journalTitle || r.journalInfo?.journal?.title || r.source || "Europe PMC";
+      const publishedAt = r.firstPublicationDate || (r.pubYear ? `${r.pubYear}-01-01` : null);
+      const authorPairs = cleanAuthorPairs((r.authorList?.author || []).map(a=>({ surname: a.lastName || "", initials: a.initials || "" })));
+      return { pmid: r.pmid || null, title: r.title || "Sans titre", source: journal,
+        date: r.firstPublicationDate || r.pubYear || "date inconnue", publishedAt,
+        summary: cleanAbstractText(r.abstractText||"").slice(0,1500), fullAbstract: cleanAbstractText(r.abstractText||"").slice(0,1800), abstractSections: [],
+        authors: authorPairs.map(p=>p.surname).slice(0,3), authorInits: authorPairs.map(p=>p.initials).slice(0,3), doi: r.doi || null, citationCount: r.citedByCount || 0,
+        zones: [], url: r.doi ? `https://doi.org/${r.doi}` : `https://europepmc.org/article/${r.source}/${r.id}` };
+    });
+  } catch(e){ return []; }
+}
+
 async function loadMustReadArticles(force){
   if (!force) {
     try {
@@ -1110,25 +1133,27 @@ async function loadMustReadArticles(force){
   const today = new Date();
   const windowStart = new Date(); windowStart.setDate(windowStart.getDate() - MUST_READ_WINDOW_DAYS);
   const minIso = isoDate(windowStart), maxIso = isoDate(today);
-  const [epmcResults, s2Results] = await Promise.all([
+  const [epmcResults, s2Results, authorResults] = await Promise.all([
     Promise.all(ZONES.map(zone => europePmcSearchTrendingByCitations(zone, minIso, maxIso))),
     Promise.all(ZONES.map(zone => semanticScholarSearchByCitations(zone, minIso, maxIso))),
+    Promise.all(AUTHORS.map(author => europePmcSearchAuthorCitations(author, minIso, maxIso))),
   ]);
   let candidates = [];
   epmcResults.forEach(r => { candidates = candidates.concat(r); });
   s2Results.forEach(r => { candidates = candidates.concat(r); });
-  // La collecte dédiée ci-dessus plafonne à 8 candidats par zone/source — un article peut avoir
+  authorResults.forEach(r => { candidates = candidates.concat(r); });
+  // La collecte dédiée ci-dessus plafonne à 8-10 candidats par zone/source — un article peut avoir
   // assez de citations pour le badge (≥ TRENDING_THRESHOLD) sans jamais être remonté par cette
-  // recherche précise s'il y a plus de 8 articles encore plus cités dans sa zone. On complète donc
+  // recherche précise s'il y a plus de candidats encore plus cités dans sa zone. On complète donc
   // avec tout article du pool général qui a déjà atteint ce seuil, pour rester cohérent avec le
-  // badge affiché ailleurs dans l'app.
+  // badge affiché ailleurs dans l'app (si le pool général a déjà été chargé).
   const windowStartMs = windowStart.getTime();
   const alreadyQualified = ARTICLES.filter(a => (a.citationCount||0) >= TRENDING_THRESHOLD
     && (!a.publishedAt || new Date(a.publishedAt).getTime() >= windowStartMs));
   candidates = candidates.concat(alreadyQualified);
   const finalized = dedupe(candidates)
     .map(finalizeArticle)
-    .filter(a => (a.citationCount||0) > 0)
+    .filter(a => (a.citationCount||0) >= TRENDING_THRESHOLD)
     .sort((a,b) => (b.citationCount||0) - (a.citationCount||0))
     .slice(0, 60);
   if (finalized.length) {
@@ -1893,7 +1918,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v59 — 2026-08-21 13:02 UTC";
+const APP_BUILD = "v60 — 2026-08-21 13:28 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
