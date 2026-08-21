@@ -1918,28 +1918,33 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v60 — 2026-08-21 13:28 UTC";
+const APP_BUILD = "v61 — 2026-08-21 16:03 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
     <div class="sources-list">
-      <div class="src-item"><b>PubMed</b><p>Base de référence en sciences médicales, interrogée en direct depuis ton téléphone.</p></div>
-      <div class="src-item"><b>Europe PMC</b><p>Base européenne, couvre aussi des preprints et contenus non indexés sur PubMed.</p></div>
-      <div class="src-item"><b>Semantic Scholar</b><p>Moteur académique large spectre, bonne couverture hors biomédical strict.</p></div>
-      <div class="src-item"><b>JOSPT</b><p>Requête dédiée en plus de la recherche générale pour mieux représenter cette revue de référence en kiné du sport.</p></div>
-      <div class="src-item"><b>Embase</b><p>Non intégrée : c'est une base payante qui nécessite un accès institutionnel avec clé API — je n'ai pas ce type d'accès. Europe PMC et Semantic Scholar couvrent une bonne partie du même terrain gratuitement.</p></div>
-      <div class="src-item"><b>Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, en plus du contenu Sportsmith, dans l'onglet Performance.</p></div>
-      <div class="src-item"><b>8 zones suivies</b><p>Tendon, cheville, pied, ischio-jambiers, genou, épaule, neuro, cardio-respiratoire.</p></div>
-      <div class="src-item"><b>Sportsmith</b><p>Tentative automatique via une éventuelle API WordPress (non confirmée pour ce site, contrairement à SPSR) — best-effort, peut ne rien remonter en direct. Quelques fiches choisies à la main complètent en filet de sécurité.</p></div>
-      <div class="src-item"><b>SimpliFaster</b><p>Contenu orienté performance/S&C, distingué dans l'onglet Performance. Pas d'API publique : fiches choisies à la main, pas au fil de l'eau comme le reste de l'app.</p></div>
-      <div class="src-item"><b>Sport Perf & Science Reports (SPSR)</b><p>Interrogée automatiquement via l'API publique de leur site (contrairement à Sportsmith/SimpliFaster). Repose sur un pont technique tiers tolérant en cas de blocage navigateur — best-effort, sans garantie de disponibilité continue.</p></div>
-      <div class="src-item"><b>Revues performance</b><p>Requête dédiée sur IJSPP, JSCR, Sports Biomechanics et Journal of Athletic Training, en plus de la recherche générale sur le sprint/biomécanique/S&C.</p></div>
-      <div class="src-item"><b>Auteurs suivis</b><p>${AUTHORS.map(a=>a.full).join(" · ")} — recherche dédiée par nom, sans limite de date (leurs 15 derniers articles, même anciens). Seul le reste de l'app (zones, performance) est limité aux 90 derniers jours.</p></div>
-      <div class="src-item"><b>Comment la note sur 5 est calculée</b><p>Note automatique (pas une lecture experte du texte intégral), basée sur 3 critères : <b>le type d'étude</b> (méta-analyse/revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous) ; <b>la taille d'échantillon</b> quand elle est détectable dans le résumé ; <b>la revue</b> (bonus si publiée dans une revue de référence du secteur : AJSM, BJSM, JOSPT, Sports Medicine...). Le texte sous chaque étoile explique le détail du calcul pour cet article précis.</p></div>
-      <div class="src-item"><b>📚 Incontournables</b><p>Les articles les plus cités sur les <b>3 dernières années</b>, toutes zones confondues — recherche indépendante du pool général, dédiée à cet onglet, croisant Europe PMC et Semantic Scholar (le plus haut chiffre des deux est retenu). Se met à jour automatiquement. À noter : Google Scholar compte souvent plus large que ces deux bases (il n'a pas d'API publique, impossible de le brancher directement) — les chiffres affichés ici peuvent donc être en dessous de ce que tu verrais sur Google Scholar pour le même article, sans que ça remette en cause le classement relatif. On a abandonné l'ancien système "Buzz" (Altmetric/Reddit) : dans un domaine de niche comme la kiné, l'attention en ligne détectable était trop rare pour être fiable.</p></div>
-      <div class="src-item"><b>Garde-fous qualité</b><p>La recherche par auteur utilise le nom + les initiales (pas juste le nom de famille) pour éviter de confondre avec un homonyme d'un autre domaine. Un filtre final n'accepte un article que s'il combine un sujet anatomique/sportif ET un vrai angle rééducation-thérapie-entraînement — un article de chirurgie ou d'épidémiologie pure est donc écarté même s'il mentionne "genou" ou "sport". Les noms de comités ou groupes d'étude ("Study Group"...) ne sont plus comptés comme des auteurs.</p></div>
-      <div class="src-item"><b>🔓 Version en accès libre</b><p>Utilise Unpaywall, un service légal qui référence les versions gratuites déjà autorisées d'un article (dépôts d'auteurs, archives institutionnelles, PMC...). Ne fonctionne que si l'article a un DOI et qu'une version légale existe ailleurs — pas de garantie de résultat.</p></div>
-      <div class="src-item"><b>Comment ça marche</b><p>Pas de serveur : la recherche tourne dans ton navigateur à chaque ouverture (ou une fois par 24h, mise en cache sinon). Touche ⟳ pour forcer une actualisation.</p></div>
+      <div class="src-item"><b>PubMed</b><p>Base de référence en sciences médicales, interrogée en direct à chaque recherche.</p></div>
+      <div class="src-item"><b>Europe PMC</b><p>Base européenne, couvre aussi des preprints et des contenus non indexés sur PubMed.</p></div>
+      <div class="src-item"><b>Semantic Scholar</b><p>Moteur académique large spectre, avec une bonne couverture hors biomédical strict.</p></div>
+      <div class="src-item"><b>JOSPT</b><p>Requête dédiée en complément de la recherche générale, pour mieux représenter cette revue de référence en kinésithérapie du sport.</p></div>
+      <div class="src-item"><b>Embase</b><p>Non intégrée : c'est une base payante qui nécessite un accès institutionnel. Europe PMC et Semantic Scholar couvrent une bonne partie du même terrain en accès libre.</p></div>
+      <div class="src-item"><b>Sportsmith</b><p>Récupération automatique via l'API du site, complétée par une sélection éditoriale en filet de sécurité si la récupération en direct échoue.</p></div>
+      <div class="src-item"><b>SimpliFaster</b><p>Contenu orienté performance et préparation physique, distingué dans l'onglet Performance. Sélection éditoriale, sans API publique disponible.</p></div>
+      <div class="src-item"><b>Sport Perf & Science Reports (SPSR)</b><p>Interrogée automatiquement via l'API publique du site.</p></div>
+      <div class="src-item"><b>Revues performance</b><p>Requête dédiée sur IJSPP, JSCR, Sports Biomechanics et Journal of Athletic Training, en complément de la recherche générale sur le sprint, la biomécanique et la préparation physique.</p></div>
+    </div>`;
+}
+function fonctionnementHTML(){
+  return `
+    <div class="sources-list">
+      <div class="src-item"><b>Zones suivies</b><p>8 zones couvrent le cœur de l'application : tendon, cheville, pied, ischio-jambiers, genou, épaule, neuro, cardio-respiratoire. Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
+      <div class="src-item"><b>Auteurs suivis</b><p>Liste entièrement personnalisable depuis Paramètres → Auteurs suivis : ajoute ou retire qui tu veux, à tout moment. Chaque auteur suivi bénéficie d'une recherche dédiée par nom, sans limite de date (ses 15 derniers articles, même anciens) — le reste de l'application reste limité aux 90 derniers jours.</p></div>
+      <div class="src-item"><b>Onglet Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, en complément du contenu Sportsmith.</p></div>
+      <div class="src-item"><b>Note sur 5 étoiles</b><p>Calculée automatiquement à partir de 3 critères : <b>le type d'étude</b> (méta-analyse et revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous), <b>la taille d'échantillon</b> quand elle est détectable dans le résumé, et <b>la revue</b> (bonus pour une publication dans une revue de référence : AJSM, BJSM, JOSPT, Sports Medicine...). Le détail du calcul est disponible sous chaque note, pour chaque article.</p></div>
+      <div class="src-item"><b>📚 Incontournables</b><p>Les articles les plus cités sur les 3 dernières années, toutes zones confondues — recherche indépendante du pool général, croisant Europe PMC et Semantic Scholar (le plus haut chiffre des deux est retenu). Se met à jour automatiquement. Les chiffres affichés peuvent être en dessous de ceux de Google Scholar (base plus large, sans accès public disponible), sans que cela remette en cause le classement relatif entre articles.</p></div>
+      <div class="src-item"><b>Garde-fous qualité</b><p>La recherche par auteur combine nom et initiales pour éviter la confusion avec un homonyme d'un autre domaine. Un filtre final n'accepte un article que s'il combine un sujet anatomique ou sportif et un véritable angle rééducation-thérapie-entraînement : un article de chirurgie ou d'épidémiologie pure est écarté même s'il mentionne un terme comme "genou" ou "sport". Les noms de comités ou groupes d'étude ne sont pas comptés comme des auteurs.</p></div>
+      <div class="src-item"><b>🔓 Accès libre</b><p>Repose sur Unpaywall, un service qui référence les versions gratuites déjà autorisées d'un article (dépôts d'auteurs, archives institutionnelles...). Disponible uniquement si l'article a un DOI et qu'une version légale existe ailleurs.</p></div>
+      <div class="src-item"><b>Architecture</b><p>Aucun serveur : chaque recherche s'exécute directement depuis l'appareil, avec une mise en cache de 24h. Le bouton ⟳ force une actualisation immédiate.</p></div>
     </div>`;
 }
 
@@ -1969,8 +1974,11 @@ function renderSettingsBody(){
       <p class="settings-note">Chaque mot-clé devient un filtre disponible dans le panneau Filtres (⏳), à activer ou désactiver.</p>`;
     renderKeywordManageList();
   } else if (state.settingsView === "sources") {
-    title.textContent = "Sources & fonctionnement";
+    title.textContent = "Sources";
     body.innerHTML = `<button class="settings-back" id="settingsBackBtn">← Retour</button>` + sourcesHTML();
+  } else if (state.settingsView === "fonctionnement") {
+    title.textContent = "Fonctionnement";
+    body.innerHTML = `<button class="settings-back" id="settingsBackBtn">← Retour</button>` + fonctionnementHTML();
   } else if (state.settingsView === "about") {
     title.textContent = "À propos";
     body.innerHTML = `
@@ -1979,7 +1987,7 @@ function renderSettingsBody(){
         <div class="src-item"><b>Ce que cette application n'est pas</b><p>Up ta Physio n'est pas un dispositif médical, ne pose pas de diagnostic et ne remplace en aucun cas le jugement clinique, la formation continue, ou la lecture critique des publications scientifiques. C'est un outil pour repérer plus vite ce qui pourrait t'intéresser — pas une source de vérité.</p></div>
         <div class="src-item"><b>Sur les notes de fiabilité</b><p>Chaque note (étoiles, type d'étude) est calculée <b>automatiquement</b> à partir de mots-clés détectés dans le titre et le résumé — ce n'est pas une évaluation par un expert, et elle peut se tromper. Utilise-la comme un premier repère, jamais comme un verdict final.</p></div>
         <div class="src-item"><b>Sur les résumés en français</b><p>Résumés et traductions sont générés automatiquement et peuvent contenir des approximations, en particulier sur la terminologie médicale précise. En cas de doute ou avant toute décision clinique, réfère-toi toujours à l'article original.</p></div>
-        <div class="src-item"><b>Sur les contenus</b><p>Les articles proviennent de bases de données tierces (PubMed, Europe PMC, Semantic Scholar) et de sites spécialisés. Up ta Physio n'écrit ni ne vérifie ces contenus — il les rassemble et les met en forme. Détail complet dans Sources & fonctionnement.</p></div>
+        <div class="src-item"><b>Sur les contenus</b><p>Les articles proviennent de bases de données tierces (PubMed, Europe PMC, Semantic Scholar) et de sites spécialisés. Up ta Physio n'écrit ni ne vérifie ces contenus — il les rassemble et les met en forme. Détail complet dans Paramètres → Sources et Fonctionnement.</p></div>
         <div class="src-item"><b>Sur tes données</b><p>Tes auteurs suivis, mots-clés et articles aimés restent stockés localement sur ton appareil — aucun compte, aucun serveur, aucune donnée envoyée à qui que ce soit.</p></div>
         <div class="src-item"><b>Sur la disponibilité</b><p>Cette application repose sur des services tiers gratuits sans garantie de disponibilité continue. Un ralentissement ou une indisponibilité ponctuelle peut survenir.</p></div>
         <div class="src-item"><b>Une question, un bug à signaler ?</b><p>Écris-nous sur Instagram <a href="https://instagram.com/uptaphysio" target="_blank" rel="noopener noreferrer" style="color:var(--accent,#FF4D8D);font-weight:600;">@uptaphysio</a></p></div>
@@ -2010,7 +2018,11 @@ function renderSettingsBody(){
       </button>
       <button class="settings-menu-item" data-view="sources">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-        <span><span class="t">Sources & fonctionnement</span><span class="d">Bases interrogées, notation, tendances</span></span>
+        <span><span class="t">Sources</span><span class="d">Bases de données interrogées</span></span>
+      </button>
+      <button class="settings-menu-item" data-view="fonctionnement">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span><span class="t">Fonctionnement</span><span class="d">Notation, zones, auteurs, tendances</span></span>
       </button>
       <button class="settings-menu-item" data-view="about">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
