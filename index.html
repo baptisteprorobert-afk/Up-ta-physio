@@ -542,7 +542,7 @@ function setTheme(t){
 }
 
 let ARTICLES = SPORTSMITH_SEED;
-let state = { tab: "accueil", zone: "all", authors: [], dateFilter: "all", minRating: 0, studyType: "all", query: "", searching: false, live: false, fetchedAt: null, settingsView: "menu", podcastsLoading: false, activeKeywords: [], keywordSearching: false, podcastView: null, mustReadLoading: false };
+let state = { tab: "accueil", zone: "all", authors: [], dateFilter: "all", minRating: 0, studyType: "all", query: "", searching: false, live: false, fetchedAt: null, settingsView: "menu", podcastsLoading: false, activeKeywords: [], keywordSearching: false, podcastView: null, mustReadLoading: false, mustReadSort: "citations" };
 const DATE_FILTERS = [{id:"all",label:"Tout"},{id:"7",label:"7 jours"},{id:"30",label:"30 jours"},{id:"90",label:"90 jours"},{id:"365",label:"1 an"}];
 const STAR_FILTERS = [{id:0,label:"Toutes notes"},{id:3,label:"★ 3+"},{id:4,label:"★ 4+"},{id:5,label:"★ 5"}];
 const TYPE_FILTERS = [{id:"all",label:"Tous types"},{id:"meta",label:"Méta-analyses & revues"},{id:"rct",label:"Essais randomisés"},{id:"cohort",label:"Cohortes"},{id:"case",label:"Cas / pilotes"}];
@@ -986,11 +986,14 @@ const PODCASTS = [
   { id: "1461102355", fallbackName: "ABD Podcast" }, // préparation physique, réathlétisation, récupération
   { id: "1651108430", fallbackName: "PERFORMANCE" }, // Sylvain Jooris, préparateur physique basket pro
   { id: "1694381521", fallbackName: "Kinéaste" }, // kiné du sport
-  { id: "1602523158", fallbackName: "Training Thérapie Podcast" }, // Thomas, Simon & Jean-Philippe Cadu
-  { id: "1778518845", fallbackName: "REKAP" }, // trail running, santé du coureur, coaching & performance
-  { id: "1649323305", fallbackName: "Les secrets du mental" }, // préparation mentale, athlètes de haut niveau
+  // Ces 3 sont hébergés chez Ausha et la résolution automatique via Apple Podcasts échouait
+  // régulièrement pour eux (raison exacte incertaine — timeout, ou l'hébergeur ne renvoie pas
+  // toujours feedUrl à l'API iTunes) — flux RSS réel trouvé directement et codé en dur en secours.
+  { id: "1602523158", fallbackName: "Training Thérapie Podcast", knownFeedUrl: "https://feed.ausha.co/M33WnF5Z9p73" },
+  { id: "1778518845", fallbackName: "REKAP", knownFeedUrl: "https://feed.ausha.co/b5AzaWSeqN5J" },
+  { id: "1649323305", fallbackName: "Les secrets du mental", knownFeedUrl: "https://feed.ausha.co/M3MAESn99RkK" },
 ];
-const PODCASTS_CACHE_KEY = "kine-podcasts-cache-v2";
+const PODCASTS_CACHE_KEY = "kine-podcasts-cache-v3";
 
 async function resolvePodcastFeed(appleId){
   const url = `https://itunes.apple.com/lookup?id=${appleId}&entity=podcast`;
@@ -1005,10 +1008,11 @@ async function resolvePodcastFeed(appleId){
 
 async function fetchPodcastEpisodes(podcast){
   const resolved = await resolvePodcastFeed(podcast.id);
-  if (!resolved || !resolved.feedUrl) return { meta: { id: podcast.id, name: podcast.fallbackName, artwork: null }, episodes: [] };
-  const podcastName = resolved.name || podcast.fallbackName;
-  const meta = { id: podcast.id, name: podcastName, artwork: resolved.artwork };
-  const res = await fetchWithCorsFallback(resolved.feedUrl);
+  const feedUrl = podcast.knownFeedUrl || resolved?.feedUrl;
+  if (!feedUrl) return { meta: { id: podcast.id, name: podcast.fallbackName, artwork: null }, episodes: [] };
+  const podcastName = resolved?.name || podcast.fallbackName;
+  const meta = { id: podcast.id, name: podcastName, artwork: resolved?.artwork || null };
+  const res = await fetchWithCorsFallback(feedUrl);
   if (!res) return { meta, episodes: [] };
   try {
     const text = await res.text();
@@ -1625,7 +1629,10 @@ function getFilteredList(){
   } else if (state.tab === "tendances") {
     // Fenêtre volontairement large et indépendante du reste de l'app (voir loadMustReadArticles) —
     // le filtre "date de publication" n'a pas de sens ici, il ne doit surtout pas s'appliquer.
-    list = MUST_READ_ARTICLES;
+    // Déjà trié par citations à la collecte ; on retrie par date si l'utilisateur préfère ça.
+    list = state.mustReadSort === "date"
+      ? [...MUST_READ_ARTICLES].sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0))
+      : MUST_READ_ARTICLES;
   } else if (state.tab === "auteurs") {
     list = ARTICLES.filter(a => {
       if (!a.followed) return false;
@@ -1765,10 +1772,12 @@ function renderCards(){
   const byId = new Map(list.map(a => [a.id, a]));
 
   const trendToggleHTML = state.tab === "tendances" ? `
-    <div class="trend-toggle">
-      <span class="trend-title">📚 Incontournables</span>
+    <div style="padding:4px 16px 0;"><span class="trend-title">📚 Incontournables</span></div>
+    <div class="toggle-row" style="padding:8px 16px 10px;">
+      <button class="ttbtn ${state.mustReadSort==='citations'?'active':''}" data-sort="citations">📈 Plus cités</button>
+      <button class="ttbtn ${state.mustReadSort==='date'?'active':''}" data-sort="date">🕐 Plus récents</button>
     </div>
-    <p class="settings-note" style="padding:0 16px 10px;">Les articles les plus cités sur les 3 dernières années, tous zones confondues — le consensus scientifique qui a eu le temps de s'installer. Se met à jour automatiquement.</p>` : "";
+    <p class="settings-note" style="padding:0 16px 10px;">${state.mustReadSort === 'date' ? "Mêmes articles (les plus cités sur 3 ans), triés cette fois du plus récent au plus ancien." : "Les articles les plus cités sur les 3 dernières années, tous zones confondues — le consensus scientifique qui a eu le temps de s'installer."}</p>` : "";
 
   document.getElementById("heroSlot").innerHTML = trendToggleHTML + (hero ? cardHTML(hero, true) : "");
   document.getElementById("cardList").innerHTML = rest.map(a => cardHTML(a, false)).join("");
@@ -1777,6 +1786,9 @@ function renderCards(){
   if (state.tab === "liked") emptyText = "Aucun article aimé pour l'instant — touche le cœur sur une carte pour la garder ici.";
   if (state.tab === "tendances") emptyText = state.mustReadLoading ? "Recherche des articles les plus cités sur les 3 dernières années…" : "Rien à afficher ici pour l'instant.";
   document.getElementById("emptyMsg").innerHTML = list.length === 0 ? `<p class="empty-state">${emptyText}</p>` : "";
+  document.querySelectorAll(".ttbtn[data-sort]").forEach(btn => {
+    btn.onclick = () => { state.mustReadSort = btn.dataset.sort; renderCards(); };
+  });
   document.querySelectorAll(".like-btn").forEach(btn => {
     btn.onclick = (e) => {
       e.preventDefault(); e.stopPropagation();
@@ -1867,7 +1879,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v55 — 2026-08-21 11:18 UTC";
+const APP_BUILD = "v57 — 2026-08-21 11:28 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
