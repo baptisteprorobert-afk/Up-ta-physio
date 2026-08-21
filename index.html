@@ -442,7 +442,7 @@ const TOP_JOURNALS = /am j sports med|br j sports med|jospt|sports med|lancet|ja
 // Onglet "Incontournables" : fenêtre volontairement bien plus large que le reste de l'app (2 ans),
 // car un article a besoin de temps pour accumuler des citations — c'est le principe même du
 // consensus scientifique. Complètement indépendant du pool général (limité à 120 jours).
-const MUST_READ_WINDOW_DAYS = 730;
+const MUST_READ_WINDOW_DAYS = 1095;
 const MUST_READ_CACHE_KEY = "kine-mustread-cache-v1";
 // Gardé pour le petit badge "📈 citations" affiché sur les cartes ailleurs dans l'app (indépendant
 // de l'onglet Incontournables lui-même, qui a sa propre logique dédiée ci-dessus).
@@ -1067,6 +1067,29 @@ let PODCAST_EPISODES = [];
 let PODCAST_SHOWS = [];
 
 // ---------- Incontournables : articles consensus, triés par citations sur une fenêtre large ----------
+// Semantic Scholar a en général un comptage de citations plus large qu'Europe PMC (plus proche de
+// Google Scholar, sans l'égaler — Google Scholar n'a pas d'API publique, volontairement, pour
+// empêcher ce genre d'intégration). On combine les deux sources et on garde le plus haut chiffre.
+async function semanticScholarSearchByCitations(zone, minIso, maxIso){
+  const minYear = minIso.slice(0,4), maxYear = maxIso.slice(0,4);
+  const q = `${zone.s2} physiotherapy rehabilitation`;
+  const url = `https://api.semanticscholar.org/graph/v1/paper/search/bulk?query=${encodeURIComponent(q)}&fields=title,abstract,venue,year,publicationDate,authors,externalIds,url,citationCount&year=${minYear}-${maxYear}&sort=citationCount:desc&limit=8`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data?.data || []).map(r => {
+      const doi = r.externalIds?.DOI || null;
+      const publishedAt = r.publicationDate || (r.year ? `${r.year}-01-01` : null);
+      const authorPairs = cleanAuthorPairs((r.authors||[]).map(a => splitFullName(a.name||"")));
+      return { pmid: r.externalIds?.PMID || null, title: r.title || "Sans titre", source: r.venue || "Semantic Scholar",
+        date: r.publicationDate || (r.year?String(r.year):"date inconnue"), publishedAt,
+        summary: cleanAbstractText(r.abstract||"").slice(0,1500), fullAbstract: cleanAbstractText(r.abstract||"").slice(0,1800), abstractSections: [], authors: authorPairs.map(p=>p.surname).slice(0,3), authorInits: authorPairs.map(p=>p.initials).slice(0,3), doi, citationCount: r.citationCount || 0,
+        zones: [zone.id], url: r.url || (doi?`https://doi.org/${doi}`:null) };
+    }).filter(a => a.url);
+  } catch(e){ return []; }
+}
+
 async function loadMustReadArticles(force){
   if (!force) {
     try {
@@ -1083,9 +1106,13 @@ async function loadMustReadArticles(force){
   const today = new Date();
   const windowStart = new Date(); windowStart.setDate(windowStart.getDate() - MUST_READ_WINDOW_DAYS);
   const minIso = isoDate(windowStart), maxIso = isoDate(today);
-  const results = await Promise.all(ZONES.map(zone => europePmcSearchTrendingByCitations(zone, minIso, maxIso)));
+  const [epmcResults, s2Results] = await Promise.all([
+    Promise.all(ZONES.map(zone => europePmcSearchTrendingByCitations(zone, minIso, maxIso))),
+    Promise.all(ZONES.map(zone => semanticScholarSearchByCitations(zone, minIso, maxIso))),
+  ]);
   let candidates = [];
-  results.forEach(r => { candidates = candidates.concat(r); });
+  epmcResults.forEach(r => { candidates = candidates.concat(r); });
+  s2Results.forEach(r => { candidates = candidates.concat(r); });
   const finalized = dedupe(candidates)
     .map(finalizeArticle)
     .filter(a => (a.citationCount||0) > 0)
@@ -1741,14 +1768,14 @@ function renderCards(){
     <div class="trend-toggle">
       <span class="trend-title">📚 Incontournables</span>
     </div>
-    <p class="settings-note" style="padding:0 16px 10px;">Les articles les plus cités sur les 2 dernières années, tous zones confondues — le consensus scientifique qui a eu le temps de s'installer. Se met à jour automatiquement.</p>` : "";
+    <p class="settings-note" style="padding:0 16px 10px;">Les articles les plus cités sur les 3 dernières années, tous zones confondues — le consensus scientifique qui a eu le temps de s'installer. Se met à jour automatiquement.</p>` : "";
 
   document.getElementById("heroSlot").innerHTML = trendToggleHTML + (hero ? cardHTML(hero, true) : "");
   document.getElementById("cardList").innerHTML = rest.map(a => cardHTML(a, false)).join("");
   let emptyText = state.searching ? "Recherche en cours… ça peut prendre jusqu'à une minute (beaucoup de sources interrogées), pas besoin de retoucher à rien." : "Rien à afficher ici pour l'instant.";
   if (state.keywordSearching) emptyText = "Recherche élargie sur PubMed et Europe PMC pour ce terme précis…";
   if (state.tab === "liked") emptyText = "Aucun article aimé pour l'instant — touche le cœur sur une carte pour la garder ici.";
-  if (state.tab === "tendances") emptyText = state.mustReadLoading ? "Recherche des articles les plus cités sur les 2 dernières années…" : "Rien à afficher ici pour l'instant.";
+  if (state.tab === "tendances") emptyText = state.mustReadLoading ? "Recherche des articles les plus cités sur les 3 dernières années…" : "Rien à afficher ici pour l'instant.";
   document.getElementById("emptyMsg").innerHTML = list.length === 0 ? `<p class="empty-state">${emptyText}</p>` : "";
   document.querySelectorAll(".like-btn").forEach(btn => {
     btn.onclick = (e) => {
@@ -1840,7 +1867,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v53 — 2026-08-21 11:04 UTC";
+const APP_BUILD = "v55 — 2026-08-21 11:18 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
@@ -1858,7 +1885,7 @@ function sourcesHTML(){
       <div class="src-item"><b>Revues performance</b><p>Requête dédiée sur IJSPP, JSCR, Sports Biomechanics et Journal of Athletic Training, en plus de la recherche générale sur le sprint/biomécanique/S&C.</p></div>
       <div class="src-item"><b>Auteurs suivis</b><p>${AUTHORS.map(a=>a.full).join(" · ")} — recherche dédiée par nom, sans limite de date (leurs 15 derniers articles, même anciens). Seul le reste de l'app (zones, performance) est limité aux 90 derniers jours.</p></div>
       <div class="src-item"><b>Comment la note sur 5 est calculée</b><p>Note automatique (pas une lecture experte du texte intégral), basée sur 3 critères : <b>le type d'étude</b> (méta-analyse/revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous) ; <b>la taille d'échantillon</b> quand elle est détectable dans le résumé ; <b>la revue</b> (bonus si publiée dans une revue de référence du secteur : AJSM, BJSM, JOSPT, Sports Medicine...). Le texte sous chaque étoile explique le détail du calcul pour cet article précis.</p></div>
-      <div class="src-item"><b>📚 Incontournables</b><p>Les articles les plus cités sur les <b>2 dernières années</b>, toutes zones confondues — recherche indépendante du pool général, dédiée à cet onglet, triée directement par nombre de citations recensées par Europe PMC. Se met à jour automatiquement à chaque actualisation. On a abandonné l'ancien système "Buzz" (Altmetric/Reddit) : dans un domaine de niche comme la kiné, l'attention en ligne détectable était trop rare pour être fiable — mieux vaut miser sur le consensus scientifique, qui a le mérite d'exister vraiment.</p></div>
+      <div class="src-item"><b>📚 Incontournables</b><p>Les articles les plus cités sur les <b>3 dernières années</b>, toutes zones confondues — recherche indépendante du pool général, dédiée à cet onglet, croisant Europe PMC et Semantic Scholar (le plus haut chiffre des deux est retenu). Se met à jour automatiquement. À noter : Google Scholar compte souvent plus large que ces deux bases (il n'a pas d'API publique, impossible de le brancher directement) — les chiffres affichés ici peuvent donc être en dessous de ce que tu verrais sur Google Scholar pour le même article, sans que ça remette en cause le classement relatif. On a abandonné l'ancien système "Buzz" (Altmetric/Reddit) : dans un domaine de niche comme la kiné, l'attention en ligne détectable était trop rare pour être fiable.</p></div>
       <div class="src-item"><b>Garde-fous qualité</b><p>La recherche par auteur utilise le nom + les initiales (pas juste le nom de famille) pour éviter de confondre avec un homonyme d'un autre domaine. Un filtre final n'accepte un article que s'il combine un sujet anatomique/sportif ET un vrai angle rééducation-thérapie-entraînement — un article de chirurgie ou d'épidémiologie pure est donc écarté même s'il mentionne "genou" ou "sport". Les noms de comités ou groupes d'étude ("Study Group"...) ne sont plus comptés comme des auteurs.</p></div>
       <div class="src-item"><b>🔓 Version en accès libre</b><p>Utilise Unpaywall, un service légal qui référence les versions gratuites déjà autorisées d'un article (dépôts d'auteurs, archives institutionnelles, PMC...). Ne fonctionne que si l'article a un DOI et qu'une version légale existe ailleurs — pas de garantie de résultat.</p></div>
       <div class="src-item"><b>Comment ça marche</b><p>Pas de serveur : la recherche tourne dans ton navigateur à chaque ouverture (ou une fois par 24h, mise en cache sinon). Touche ⟳ pour forcer une actualisation.</p></div>
