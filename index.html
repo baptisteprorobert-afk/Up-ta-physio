@@ -421,10 +421,33 @@ function removeKeyword(word){
   state.activeKeywords = state.activeKeywords.filter(k => k !== word);
   saveKeywords();
 }
+// Jusqu'ici, activer un mot-clé ne faisait que FILTRER le pool déjà chargé — si rien ne
+// correspondait pile au moment de l'activation, ça restait vide même si le mot-clé était valide,
+// jusqu'à ce qu'une autre action (recherche dans la barre principale) enrichisse le pool par
+// hasard. On déclenche maintenant une vraie recherche live dédiée, comme la barre de recherche.
+async function activateKeywordLiveSearch(word){
+  state.keywordSearching = true;
+  renderCards();
+  try {
+    const liveResults = await liveKeywordSearch(word);
+    if (liveResults.length) {
+      const existingIds = new Set(ARTICLES.map(a => a.id));
+      const fresh = liveResults.filter(a => !existingIds.has(a.id));
+      if (fresh.length) ARTICLES = ARTICLES.concat(fresh);
+    }
+  } finally {
+    state.keywordSearching = false;
+    renderCards();
+  }
+}
 function matchesActiveKeywords(title, summary){
   if (state.activeKeywords.length === 0) return true;
   const hay = normText(`${title} ${summary}`);
-  return state.activeKeywords.some(k => hay.includes(normText(k)));
+  return state.activeKeywords.some(k => {
+    if (hay.includes(normText(k))) return true;
+    const en = KEYWORD_TRANSLATIONS[normText(k)];
+    return en && hay.includes(normText(en));
+  });
 }
 
 const DISCOVER_AUTHORS = [
@@ -665,6 +688,19 @@ async function translateToFr(text){
   if (!t) return "";
   try {
     const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(t.slice(0,480))}&langpair=en|fr`);
+    const data = await res.json();
+    const out = data?.responseData?.translatedText;
+    return out && !/MYMEMORY WARNING|NO QUERY SPECIFIED/i.test(out) ? out : t;
+  } catch(e){ return t; }
+}
+// Sens inverse, utilisé pour la recherche par mot-clé : PubMed/Europe PMC sont quasi exclusivement
+// en anglais, donc un mot-clé tapé en français ne remonte des résultats que par coïncidence (terme
+// identique dans les deux langues). On traduit systématiquement avant de chercher.
+async function translateToEn(text){
+  const t = (text || "").trim();
+  if (!t) return "";
+  try {
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(t.slice(0,480))}&langpair=fr|en`);
     const data = await res.json();
     const out = data?.responseData?.translatedText;
     return out && !/MYMEMORY WARNING|NO QUERY SPECIFIED/i.test(out) ? out : t;
@@ -1405,14 +1441,12 @@ function finalizeArticle(a){
 // pour autant être absent de PubMed. On lance donc une vraie requête pour le terme tapé, avec une
 // fenêtre plus large (3 ans) puisque c'est une recherche volontaire, pas le fil passif.
 const KEYWORD_SEARCH_CACHE = {};
-async function liveKeywordSearch(term){
-  const q = term.trim();
-  if (q.length < 3) return [];
-  if (KEYWORD_SEARCH_CACHE[normText(q)]) return KEYWORD_SEARCH_CACHE[normText(q)];
-  const windowStart = new Date(); windowStart.setFullYear(windowStart.getFullYear() - 3);
-  const today = new Date();
-  const minPm = pubmedDate(windowStart), maxPm = pubmedDate(today);
-  const minIso = isoDate(windowStart), maxIso = isoDate(today);
+// Garde en mémoire la traduction anglaise de chaque mot-clé recherché, pour que le filtre
+// d'affichage (matchesActiveKeywords) reconnaisse aussi les articles anglais qu'on vient de
+// trouver — sans ça, un mot-clé français retrouverait les bons articles puis les recracherait
+// aussitôt du filtre, faute de correspondance textuelle directe.
+const KEYWORD_TRANSLATIONS = {};
+async function searchTermAcrossSources(q, minPm, maxPm, minIso, maxIso){
   const pubmedTerm = `(${q}[Title/Abstract])`;
   const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(pubmedTerm)}&retmax=20&sort=relevance&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
   const epmcQ = `"${q}" AND FIRST_PDATE:[${minIso} TO ${maxIso}]`;
@@ -1441,7 +1475,29 @@ async function liveKeywordSearch(term){
           zones: [], url: r.doi ? `https://doi.org/${r.doi}` : `https://europepmc.org/article/${r.source}/${r.id}` };
       });
     }
-    const results = [...pmArticles, ...epmcArticles]
+    return [...pmArticles, ...epmcArticles];
+  } catch(e){ return []; }
+}
+async function liveKeywordSearch(term){
+  const q = term.trim();
+  if (q.length < 3) return [];
+  if (KEYWORD_SEARCH_CACHE[normText(q)]) return KEYWORD_SEARCH_CACHE[normText(q)];
+  const windowStart = new Date(); windowStart.setFullYear(windowStart.getFullYear() - 3);
+  const today = new Date();
+  const minPm = pubmedDate(windowStart), maxPm = pubmedDate(today);
+  const minIso = isoDate(windowStart), maxIso = isoDate(today);
+  // PubMed/Europe PMC sont quasi exclusivement en anglais : on traduit le terme pour ne pas
+  // dépendre du hasard (un mot identique dans les deux langues, ou un terme déjà en anglais tapé
+  // par l'utilisateur). On garde aussi le terme original en parallèle — utile pour les noms
+  // propres, sigles, ou termes déjà identiques (ex. "genou" ne se traduit pas toujours bien).
+  const translated = await translateToEn(q);
+  KEYWORD_TRANSLATIONS[normText(q)] = translated;
+  const terms = normText(translated) !== normText(q) ? [q, translated] : [q];
+  try {
+    const resultSets = await Promise.all(terms.map(t => searchTermAcrossSources(t, minPm, maxPm, minIso, maxIso)));
+    let combined = [];
+    resultSets.forEach(r => { combined = combined.concat(r); });
+    const results = dedupe(combined)
       .filter(a => BROAD_DOMAIN_REGEX.test(`${a.title} ${a.summary}`))
       .map(finalizeArticle);
     KEYWORD_SEARCH_CACHE[normText(q)] = results;
@@ -1546,8 +1602,10 @@ function renderKeywordChips(){
   el.innerHTML = CUSTOM_KEYWORDS.map(k => `<button class="chip ${state.activeKeywords.includes(k)?'active':''}" data-keyword="${esc(k)}">${esc(k)}</button>`).join("");
   el.querySelectorAll("button").forEach(b => b.onclick = () => {
     const k = b.dataset.keyword;
-    state.activeKeywords = state.activeKeywords.includes(k) ? state.activeKeywords.filter(x=>x!==k) : [...state.activeKeywords, k];
+    const activating = !state.activeKeywords.includes(k);
+    state.activeKeywords = activating ? [...state.activeKeywords, k] : state.activeKeywords.filter(x=>x!==k);
     render();
+    if (activating) activateKeywordLiveSearch(k);
   });
 }
 function renderAuthorManageList(){
@@ -1575,7 +1633,14 @@ function renderKeywordManageList(){
   el.querySelectorAll("[data-remove]").forEach(b => b.onclick = () => { removeKeyword(b.dataset.remove); renderKeywordManageList(); render(); });
   const input = document.getElementById("keywordAddInput");
   const addBtn = document.getElementById("keywordAddBtn");
-  if (addBtn) addBtn.onclick = () => { addKeyword(input.value); input.value = ""; renderKeywordManageList(); render(); };
+  if (addBtn) addBtn.onclick = () => {
+    const w = input.value.trim();
+    addKeyword(input.value);
+    input.value = "";
+    renderKeywordManageList();
+    render();
+    if (w) activateKeywordLiveSearch(w);
+  };
   if (input) input.addEventListener("keydown", (e) => { if (e.key === "Enter") addBtn.click(); });
 }
 function renderAuthorBox(){
@@ -1918,7 +1983,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v63 — 2026-08-21 16:32 UTC";
+const APP_BUILD = "v65 — 2026-08-21 23:21 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
