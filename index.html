@@ -145,6 +145,7 @@
   .oa-btn { flex: 1; padding: 8px 6px; border-radius: 8px; background: #142A26; border: 1px solid #1E4A40; color: #4DD9A8; font-size: 11.5px; font-weight: 500; text-align: center; }
   .oa-btn:active { opacity: 0.7; }
   .summary-toggle { flex: 1; padding: 8px 6px; border-radius: 8px; background: #2A2013; border: 1px solid #4A3A1E; color: #FFB020; font-size: 11.5px; font-weight: 500; text-align: center; }
+  html[data-theme="light"] .summary-toggle { background: linear-gradient(90deg, #5B6EEB, #FF4D8D); border: none; color: #fff; font-weight: 600; }
   .summary-toggle:active { opacity: 0.7; }
   .summary-panel { display: none; margin-top: 10px; padding: 12px; border-radius: 10px; background: var(--surface3); border: 1px solid var(--border3); }
   .summary-panel.open { display: block; }
@@ -157,6 +158,9 @@
 
   .note { margin: 28px 0 16px; padding: 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
   .note p { font-size: 12px; color: var(--text3); line-height: 1.5; margin: 0; }
+  .disclaimer-banner { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; margin-bottom: 14px; border-radius: 12px; background: var(--surface3); border: 1px solid var(--border); }
+  .disclaimer-banner p { font-size: 12px; color: var(--text2); line-height: 1.5; margin: 0; flex: 1; }
+  .disclaimer-banner button { background: none; color: var(--text4); font-size: 16px; line-height: 1; flex-shrink: 0; padding: 2px; }
 
   nav.tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; background: var(--surface2); border-top: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-around; padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
@@ -167,6 +171,13 @@
   nav.tabbar span { font-family: 'Barlow Condensed', sans-serif; font-size: 9.5px; font-weight: 700; text-transform: uppercase; }
 
   .sources-list { display: flex; flex-direction: column; gap: 10px; }
+  .podcast-show-list { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+  .podcast-show-card { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); text-align: left; color: var(--text3); }
+  .podcast-artwork { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex-shrink: 0; background: var(--surface3); }
+  .podcast-artwork-fallback { display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .podcast-show-info { flex: 1; min-width: 0; }
+  .podcast-show-name { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 18px; color: var(--text); margin: 0 0 2px; }
+  .podcast-show-count { font-size: 12px; color: var(--text3); margin: 0; }
   .sources-list .src-item { padding: 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
   .sources-list .src-item b { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; }
   .sources-list .src-item p { font-size: 12px; color: var(--text3); margin: 4px 0 0; }
@@ -180,6 +191,9 @@
       <span class="logo-text">UP TA<span class="accent" id="logoAccent">PHYSIO</span></span>
     </div>
     <div class="topbar-actions">
+      <button id="aboutBtn" class="refresh-btn" aria-label="À propos">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </button>
       <button id="settingsBtn" class="refresh-btn" aria-label="Paramètres">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -237,6 +251,7 @@
   <div id="pullIndicator" class="pull-indicator">
     <svg id="pullSpinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
   </div>
+  <div id="disclaimerBanner"></div>
   <div id="authorBox"></div>
   <div id="heroSlot"></div>
   <div id="cardList"></div>
@@ -424,7 +439,7 @@ const DISCOVER_AUTHORS = [
   { name: "Karin Grävare Silbernagel", specialty: "Rééducation et suivi longitudinal du tendon d'Achille." },
 ];
 const TOP_JOURNALS = /am j sports med|br j sports med|jospt|sports med|lancet|jama|nejm|nature|sci rep|cochrane|bjsm|ajsm/i;
-const TRENDING_THRESHOLD = 5;
+const TRENDING_THRESHOLD = 3;
 const TRENDING_WINDOW_DAYS = 365;
 const ALTMETRIC_THRESHOLD = 1;
 const REDDIT_MIN_MENTIONS = 1;
@@ -523,7 +538,7 @@ function setTheme(t){
 }
 
 let ARTICLES = SPORTSMITH_SEED;
-let state = { tab: "accueil", zone: "all", authors: [], dateFilter: "all", minRating: 0, studyType: "all", query: "", trendMetric: "buzz", searching: false, live: false, fetchedAt: null, settingsView: "menu", podcastsLoading: false, activeKeywords: [], keywordSearching: false };
+let state = { tab: "accueil", zone: "all", authors: [], dateFilter: "all", minRating: 0, studyType: "all", query: "", trendMetric: "buzz", searching: false, live: false, fetchedAt: null, settingsView: "menu", podcastsLoading: false, activeKeywords: [], keywordSearching: false, podcastView: null };
 const DATE_FILTERS = [{id:"all",label:"Tout"},{id:"7",label:"7 jours"},{id:"30",label:"30 jours"},{id:"90",label:"90 jours"},{id:"365",label:"1 an"}];
 const STAR_FILTERS = [{id:0,label:"Toutes notes"},{id:3,label:"★ 3+"},{id:4,label:"★ 4+"},{id:5,label:"★ 5"}];
 const TYPE_FILTERS = [{id:"all",label:"Tous types"},{id:"meta",label:"Méta-analyses & revues"},{id:"rct",label:"Essais randomisés"},{id:"cohort",label:"Cohortes"},{id:"case",label:"Cas / pilotes"}];
@@ -957,14 +972,14 @@ function stripWpHtml(html){
 // actualisation via l'API publique d'Apple (itunes.apple.com/lookup) — si un podcast se renomme,
 // ça suit automatiquement sans qu'on ait besoin d'y retoucher.
 const PODCASTS = [
-  { id: "1513807019", fallbackName: "Objectif Performance" }, // Julien Astouric
-  { id: "1691850548", fallbackName: "Vers l'Excellence Sportive" }, // Yoann Fabulet
-  { id: "1602523158", fallbackName: "Training Thérapie Podcast" }, // Thomas, Simon & Jean-Philippe Cadu
   { id: "1461102355", fallbackName: "ABD Podcast" }, // préparation physique, réathlétisation, récupération
-  { id: "1694381521", fallbackName: "Kinéaste" }, // kiné du sport
   { id: "1651108430", fallbackName: "PERFORMANCE" }, // Sylvain Jooris, préparateur physique basket pro
+  { id: "1694381521", fallbackName: "Kinéaste" }, // kiné du sport
+  { id: "1602523158", fallbackName: "Training Thérapie Podcast" }, // Thomas, Simon & Jean-Philippe Cadu
+  { id: "1778518845", fallbackName: "REKAP" }, // trail running, santé du coureur, coaching & performance
+  { id: "1649323305", fallbackName: "Les secrets du mental" }, // préparation mentale, athlètes de haut niveau
 ];
-const PODCASTS_CACHE_KEY = "kine-podcasts-cache-v1";
+const PODCASTS_CACHE_KEY = "kine-podcasts-cache-v2";
 
 async function resolvePodcastFeed(appleId){
   const url = `https://itunes.apple.com/lookup?id=${appleId}&entity=podcast`;
@@ -973,21 +988,22 @@ async function resolvePodcastFeed(appleId){
   try {
     const data = await res.json();
     const result = data?.results?.[0];
-    return result ? { feedUrl: result.feedUrl || null, name: result.collectionName || null } : null;
+    return result ? { feedUrl: result.feedUrl || null, name: result.collectionName || null, artwork: result.artworkUrl600 || result.artworkUrl100 || null } : null;
   } catch(e){ return null; }
 }
 
 async function fetchPodcastEpisodes(podcast){
   const resolved = await resolvePodcastFeed(podcast.id);
-  if (!resolved || !resolved.feedUrl) return [];
+  if (!resolved || !resolved.feedUrl) return { meta: { id: podcast.id, name: podcast.fallbackName, artwork: null }, episodes: [] };
   const podcastName = resolved.name || podcast.fallbackName;
+  const meta = { id: podcast.id, name: podcastName, artwork: resolved.artwork };
   const res = await fetchWithCorsFallback(resolved.feedUrl);
-  if (!res) return [];
+  if (!res) return { meta, episodes: [] };
   try {
     const text = await res.text();
     const doc = new DOMParser().parseFromString(text, "text/xml");
     const items = Array.from(doc.getElementsByTagName("item")).slice(0, 15);
-    return items.map(item => {
+    const episodes = items.map(item => {
       const title = item.getElementsByTagName("title")[0]?.textContent || "Sans titre";
       const pubDate = item.getElementsByTagName("pubDate")[0]?.textContent || "";
       const parsedDate = pubDate ? new Date(pubDate) : null;
@@ -1001,7 +1017,7 @@ async function fetchPodcastEpisodes(podcast){
       const durationRaw = item.getElementsByTagName("itunes:duration")[0]?.textContent || "";
       return {
         id: `pod-${podcast.id}-${(link || title).slice(0,80)}`,
-        podcast: podcastName,
+        podcastId: podcast.id, podcast: podcastName,
         title, description, publishedAt,
         date: publishedAt ? publishedAt.slice(0,10) : (pubDate || "date inconnue"),
         duration: durationRaw,
@@ -1009,7 +1025,8 @@ async function fetchPodcastEpisodes(podcast){
         zones: inferZones(title, description),
       };
     });
-  } catch(e){ return []; }
+    return { meta, episodes };
+  } catch(e){ return { meta, episodes: [] }; }
 }
 
 async function loadPodcasts(force){
@@ -1020,19 +1037,23 @@ async function loadPodcasts(force){
         const parsed = JSON.parse(cached);
         if (Date.now() - new Date(parsed.fetchedAt).getTime() < CACHE_MAX_AGE) {
           PODCAST_EPISODES = parsed.episodes;
+          PODCAST_SHOWS = parsed.shows;
           return;
         }
       }
     } catch(e){}
   }
   const results = await Promise.all(PODCASTS.map(fetchPodcastEpisodes));
-  const episodes = results.flat().sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+  const episodes = results.flatMap(r => r.episodes).sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+  const shows = results.map(r => r.meta).filter(m => m);
   if (episodes.length) {
     PODCAST_EPISODES = episodes;
-    try { localStorage.setItem(PODCASTS_CACHE_KEY, JSON.stringify({ fetchedAt: new Date().toISOString(), episodes })); } catch(e){}
+    PODCAST_SHOWS = shows;
+    try { localStorage.setItem(PODCASTS_CACHE_KEY, JSON.stringify({ fetchedAt: new Date().toISOString(), episodes, shows })); } catch(e){}
   }
 }
 let PODCAST_EPISODES = [];
+let PODCAST_SHOWS = [];
 
 async function searchSPSR(minIso, maxIso){
   const url = `https://sportperfsci.com/wp-json/wp/v2/posts?per_page=25&orderby=date&order=desc&after=${minIso}T00:00:00`;
@@ -1116,6 +1137,28 @@ async function semanticScholarSearchPerformance(minIso, maxIso){
 async function europePmcSearchTrending(zone, minIso, maxIso){
   const q = `${zone.plain} AND (physiotherapy OR "physical therapy" OR rehabilitation) AND FIRST_PDATE:[${minIso} TO ${maxIso}]`;
   const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=10&resultType=core&sort=P_PDATE_D%20desc`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data?.resultList?.result || []).map(r => {
+      const journal = r.journalTitle || r.journalInfo?.journal?.title || r.source || "Europe PMC";
+      const publishedAt = r.firstPublicationDate || (r.pubYear ? `${r.pubYear}-01-01` : null);
+      const authorPairs = cleanAuthorPairs((r.authorList?.author || []).map(a=>({ surname: a.lastName || "", initials: a.initials || "" })));
+      return { pmid: r.pmid || null, title: r.title || "Sans titre", source: journal,
+        date: r.firstPublicationDate || r.pubYear || "date inconnue", publishedAt,
+        summary: cleanAbstractText(r.abstractText||"").slice(0,1500), fullAbstract: cleanAbstractText(r.abstractText||"").slice(0,1800), abstractSections: [],
+        authors: authorPairs.map(p=>p.surname).slice(0,3), authorInits: authorPairs.map(p=>p.initials).slice(0,3), doi: r.doi || null, citationCount: r.citedByCount || 0,
+        zones: zone.id ? [zone.id] : [], url: r.doi ? `https://doi.org/${r.doi}` : `https://europepmc.org/article/${r.source}/${r.id}` };
+    });
+  } catch(e){ return []; }
+}
+// Variante triée par nombre de citations plutôt que par date : la recherche triée par date ne
+// remonte que les articles les plus récents, qui n'ont structurellement pas encore eu le temps
+// d'être cités (ça prend des mois) — sans cette passe, l'onglet Citations reste vide en pratique.
+async function europePmcSearchTrendingByCitations(zone, minIso, maxIso){
+  const q = `${zone.plain} AND (physiotherapy OR "physical therapy" OR rehabilitation) AND FIRST_PDATE:[${minIso} TO ${maxIso}]`;
+  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=8&resultType=core&sort=CITED_BY_COUNT%20desc`;
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
@@ -1233,8 +1276,12 @@ async function runLiveSearch(){
   const trendWindowStart = new Date(); trendWindowStart.setDate(trendWindowStart.getDate() - TRENDING_WINDOW_DAYS);
   const trendMinIso = isoDate(trendWindowStart);
   let trendCandidates = [];
-  const trendResults = await Promise.all(ZONES.map(zone => europePmcSearchTrending(zone, trendMinIso, maxIso)));
-  trendResults.forEach(r => { trendCandidates = trendCandidates.concat(r); });
+  const [trendResultsRecent, trendResultsCited] = await Promise.all([
+    Promise.all(ZONES.map(zone => europePmcSearchTrending(zone, trendMinIso, maxIso))),
+    Promise.all(ZONES.map(zone => europePmcSearchTrendingByCitations(zone, trendMinIso, maxIso))),
+  ]);
+  trendResultsRecent.forEach(r => { trendCandidates = trendCandidates.concat(r); });
+  trendResultsCited.forEach(r => { trendCandidates = trendCandidates.concat(r); });
   trendCandidates = trendCandidates.concat(await europePmcSearchJFK(trendMinIso, maxIso));
 
   for (const cand of trendCandidates) {
@@ -1294,7 +1341,7 @@ async function runLiveSearch(){
   // Auparavant, seule la petite recherche "Tendances" dédiée était vérifiée pour le buzz — la grande
   // majorité du pool (auteurs suivis, Performance, zones) n'était jamais checkée. On complète ici,
   // plafonné pour ne pas exploser le temps de recherche, en priorité sur les articles les plus récents.
-  const BUZZ_CHECK_CAP = 35;
+  const BUZZ_CHECK_CAP = 55;
   const toCheck = merged.filter(a => !a._buzzChecked && a.doi)
     .sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0))
     .slice(0, BUZZ_CHECK_CAP);
@@ -1613,6 +1660,22 @@ function getFilteredList(){
   return list;
 }
 
+function podcastShowCardHTML(show){
+  const count = PODCAST_EPISODES.filter(ep => ep.podcastId === show.id).length;
+  const artwork = show.artwork
+    ? `<img src="${esc(show.artwork)}" alt="" class="podcast-artwork" />`
+    : `<div class="podcast-artwork podcast-artwork-fallback">🎙️</div>`;
+  return `
+    <button class="podcast-show-card" data-podcast-id="${esc(show.id)}">
+      ${artwork}
+      <div class="podcast-show-info">
+        <h3 class="podcast-show-name">${esc(show.name)}</h3>
+        <p class="podcast-show-count">${count} épisode${count>1?"s":""}</p>
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>`;
+}
+
 function podcastCardHTML(ep){
   const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(ep.podcast + " " + ep.title)}`;
   return `
@@ -1640,6 +1703,7 @@ function podcastCardHTML(ep){
 
 function getFilteredPodcasts(){
   let list = PODCAST_EPISODES;
+  if (state.podcastView) list = list.filter(ep => ep.podcastId === state.podcastView);
   if (state.zone !== "all") list = list.filter(ep => ep.zones.includes(state.zone));
   if (state.dateFilter !== "all") {
     const days = parseInt(state.dateFilter);
@@ -1652,11 +1716,35 @@ function getFilteredPodcasts(){
 }
 
 function renderPodcastCards(){
-  const list = getFilteredPodcasts();
   document.getElementById("heroSlot").innerHTML = "";
-  document.getElementById("cardList").innerHTML = list.map(podcastCardHTML).join("");
+
+  // Vue "liste des podcasts" : pas de podcast sélectionné, et aucun filtre actif qui impliquerait
+  // de vouloir voir directement les épisodes (recherche, mot-clé).
+  const wantsEpisodeView = state.podcastView || state.query.trim() || state.activeKeywords.length > 0 || state.zone !== "all" || state.dateFilter !== "all";
+  if (!wantsEpisodeView) {
+    if (state.podcastsLoading) {
+      document.getElementById("cardList").innerHTML = "";
+      document.getElementById("emptyMsg").innerHTML = `<p class="empty-state">Chargement des podcasts…</p>`;
+      return;
+    }
+    document.getElementById("cardList").innerHTML = `<div class="podcast-show-list">${PODCAST_SHOWS.map(podcastShowCardHTML).join("")}</div>
+      <div class="note" style="text-align:center;">
+        <p>Une suggestion de podcast ? Contacte-nous sur Instagram <a href="https://instagram.com/uptaphysio" target="_blank" rel="noopener noreferrer" style="color:var(--accent,#FF4D8D);font-weight:600;">@uptaphysio</a></p>
+      </div>`;
+    document.getElementById("emptyMsg").innerHTML = PODCAST_SHOWS.length === 0 ? `<p class="empty-state">Rien à afficher ici pour l'instant.</p>` : "";
+    document.querySelectorAll(".podcast-show-card").forEach(btn => {
+      btn.onclick = () => { state.podcastView = btn.dataset.podcastId; renderCards(); };
+    });
+    return;
+  }
+
+  const list = getFilteredPodcasts();
+  const backBtn = state.podcastView ? `<button class="settings-back" id="podcastBackBtn" style="margin:0 0 12px;">← Tous les podcasts</button>` : "";
+  document.getElementById("cardList").innerHTML = backBtn + list.map(podcastCardHTML).join("");
   const emptyText = state.podcastsLoading ? "Chargement des épisodes…" : "Rien à afficher ici pour l'instant.";
   document.getElementById("emptyMsg").innerHTML = list.length === 0 ? `<p class="empty-state">${emptyText}</p>` : "";
+  const back = document.getElementById("podcastBackBtn");
+  if (back) back.onclick = () => { state.podcastView = null; renderCards(); };
 }
 
 function renderCards(){
@@ -1678,7 +1766,7 @@ function renderCards(){
   let emptyText = state.searching ? "Recherche en cours… ça peut prendre jusqu'à une minute (beaucoup de sources interrogées), pas besoin de retoucher à rien." : "Rien à afficher ici pour l'instant.";
   if (state.keywordSearching) emptyText = "Recherche élargie sur PubMed et Europe PMC pour ce terme précis…";
   if (state.tab === "liked") emptyText = "Aucun article aimé pour l'instant — touche le cœur sur une carte pour la garder ici.";
-  if (state.tab === "tendances" && !state.searching) emptyText = state.trendMetric === "buzz" ? "Rien qui buzz particulièrement pour l'instant (Altmetric ≥ 1 ou mention sur les subreddits physio/sport, sur les 12 derniers mois)." : "Rien de particulièrement cité pour l'instant (5 citations ou plus sur les 12 derniers mois).";
+  if (state.tab === "tendances" && !state.searching) emptyText = state.trendMetric === "buzz" ? "Rien qui buzz particulièrement pour l'instant (Altmetric ≥ 1 ou mention sur les subreddits physio/sport, sur les 12 derniers mois)." : "Rien de particulièrement cité pour l'instant (3 citations ou plus sur les 12 derniers mois).";
   document.getElementById("emptyMsg").innerHTML = list.length === 0 ? `<p class="empty-state">${emptyText}</p>` : "";
   document.querySelectorAll(".ttbtn").forEach(btn => {
     btn.onclick = () => { state.trendMetric = btn.dataset.metric; renderCards(); };
@@ -1773,10 +1861,10 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v43 — 2026-08-19 12:27 UTC";
+const APP_BUILD = "v49 — 2026-08-21 01:50 UTC";
 function sourcesHTML(){
   return `
-    <p class="settings-note" style="margin:0 0 14px;">Version de l'app : <b style="color:var(--text2)">${esc(APP_BUILD)}</b> — dis-moi ce numéro si quelque chose semble ne pas marcher, ça permet de vérifier si ton téléphone a bien la dernière version déposée.</p>
+    <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
     <div class="sources-list">
       <div class="src-item"><b>PubMed</b><p>Base de référence en sciences médicales, interrogée en direct depuis ton téléphone.</p></div>
       <div class="src-item"><b>Europe PMC</b><p>Base européenne, couvre aussi des preprints et contenus non indexés sur PubMed.</p></div>
@@ -1791,7 +1879,7 @@ function sourcesHTML(){
       <div class="src-item"><b>Revues performance</b><p>Requête dédiée sur IJSPP, JSCR, Sports Biomechanics et Journal of Athletic Training, en plus de la recherche générale sur le sprint/biomécanique/S&C.</p></div>
       <div class="src-item"><b>Auteurs suivis</b><p>${AUTHORS.map(a=>a.full).join(" · ")} — recherche dédiée par nom, sans limite de date (leurs 15 derniers articles, même anciens). Seul le reste de l'app (zones, performance) est limité aux 90 derniers jours.</p></div>
       <div class="src-item"><b>Comment la note sur 5 est calculée</b><p>Note automatique (pas une lecture experte du texte intégral), basée sur 3 critères : <b>le type d'étude</b> (méta-analyse/revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous) ; <b>la taille d'échantillon</b> quand elle est détectable dans le résumé ; <b>la revue</b> (bonus si publiée dans une revue de référence du secteur : AJSM, BJSM, JOSPT, Sports Medicine...). Le texte sous chaque étoile explique le détail du calcul pour cet article précis.</p></div>
-      <div class="src-item"><b>🔥 Tendances</b><p>Deux critères indépendants, sur les 12 derniers mois — tu choisis lequel voir dans l'onglet : <b>Buzz</b> (Altmetric ≥ 1 <i>ou</i> au moins 1 mention sur les subreddits physio/sport comme r/physicaltherapy, r/DPT, r/sportsmedicine — seuil volontairement bas car la kiné est un domaine de niche, moins visible sur les réseaux que d'autres champs médicaux) et <b>Citations</b> (≥ 5 citations recensées par Europe PMC — reconnaissance scientifique, mais qui prend du temps à apparaître). Vérifié désormais sur l'ensemble du pool (auteurs suivis, Performance, zones), pas seulement une recherche à part. Altmetric et Reddit sont des services tiers gratuits, sans garantie de disponibilité continue.</p></div>
+      <div class="src-item"><b>🔥 Tendances</b><p>Deux critères indépendants, sur les 12 derniers mois — tu choisis lequel voir dans l'onglet : <b>Buzz</b> (Altmetric ≥ 1 <i>ou</i> au moins 1 mention sur les subreddits physio/sport comme r/physicaltherapy, r/DPT, r/sportsmedicine — seuil volontairement bas car la kiné est un domaine de niche, moins visible sur les réseaux que d'autres champs médicaux) et <b>Citations</b> (≥ 3 citations recensées par Europe PMC — collecte à la fois par date récente et par nombre de citations, pour ne pas rater les articles qui ont eu le temps d'être cités). Vérifié sur l'ensemble du pool (auteurs suivis, Performance, zones), pas seulement une recherche à part. Altmetric et Reddit sont des services tiers gratuits, sans garantie de disponibilité continue.</p></div>
       <div class="src-item"><b>Garde-fous qualité</b><p>La recherche par auteur utilise le nom + les initiales (pas juste le nom de famille) pour éviter de confondre avec un homonyme d'un autre domaine. Un filtre final n'accepte un article que s'il combine un sujet anatomique/sportif ET un vrai angle rééducation-thérapie-entraînement — un article de chirurgie ou d'épidémiologie pure est donc écarté même s'il mentionne "genou" ou "sport". Les noms de comités ou groupes d'étude ("Study Group"...) ne sont plus comptés comme des auteurs.</p></div>
       <div class="src-item"><b>🔓 Version en accès libre</b><p>Utilise Unpaywall, un service légal qui référence les versions gratuites déjà autorisées d'un article (dépôts d'auteurs, archives institutionnelles, PMC...). Ne fonctionne que si l'article a un DOI et qu'une version légale existe ailleurs — pas de garantie de résultat.</p></div>
       <div class="src-item"><b>Comment ça marche</b><p>Pas de serveur : la recherche tourne dans ton navigateur à chaque ouverture (ou une fois par 24h, mise en cache sinon). Touche ⟳ pour forcer une actualisation.</p></div>
@@ -1826,6 +1914,19 @@ function renderSettingsBody(){
   } else if (state.settingsView === "sources") {
     title.textContent = "Sources & fonctionnement";
     body.innerHTML = `<button class="settings-back" id="settingsBackBtn">← Retour</button>` + sourcesHTML();
+  } else if (state.settingsView === "about") {
+    title.textContent = "À propos";
+    body.innerHTML = `
+      <button class="settings-back" id="settingsBackBtn">← Retour</button>
+      <div class="sources-list">
+        <div class="src-item"><b>Ce que cette application n'est pas</b><p>Up ta Physio n'est pas un dispositif médical, ne pose pas de diagnostic et ne remplace en aucun cas le jugement clinique, la formation continue, ou la lecture critique des publications scientifiques. C'est un outil pour repérer plus vite ce qui pourrait t'intéresser — pas une source de vérité.</p></div>
+        <div class="src-item"><b>Sur les notes de fiabilité</b><p>Chaque note (étoiles, type d'étude) est calculée <b>automatiquement</b> à partir de mots-clés détectés dans le titre et le résumé — ce n'est pas une évaluation par un expert, et elle peut se tromper. Utilise-la comme un premier repère, jamais comme un verdict final.</p></div>
+        <div class="src-item"><b>Sur les résumés en français</b><p>Résumés et traductions sont générés automatiquement et peuvent contenir des approximations, en particulier sur la terminologie médicale précise. En cas de doute ou avant toute décision clinique, réfère-toi toujours à l'article original.</p></div>
+        <div class="src-item"><b>Sur les contenus</b><p>Les articles proviennent de bases de données tierces (PubMed, Europe PMC, Semantic Scholar) et de sites spécialisés. Up ta Physio n'écrit ni ne vérifie ces contenus — il les rassemble et les met en forme. Détail complet dans Sources & fonctionnement.</p></div>
+        <div class="src-item"><b>Sur tes données</b><p>Tes auteurs suivis, mots-clés et articles aimés restent stockés localement sur ton appareil — aucun compte, aucun serveur, aucune donnée envoyée à qui que ce soit.</p></div>
+        <div class="src-item"><b>Sur la disponibilité</b><p>Cette application repose sur des services tiers gratuits sans garantie de disponibilité continue. Un ralentissement ou une indisponibilité ponctuelle peut survenir.</p></div>
+        <div class="src-item"><b>Une question, un bug à signaler ?</b><p>Écris-nous sur Instagram <a href="https://instagram.com/uptaphysio" target="_blank" rel="noopener noreferrer" style="color:var(--accent,#FF4D8D);font-weight:600;">@uptaphysio</a></p></div>
+      </div>`;
   } else if (state.settingsView === "appearance") {
     title.textContent = "Apparence";
     body.innerHTML = `
@@ -1854,6 +1955,10 @@ function renderSettingsBody(){
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         <span><span class="t">Sources & fonctionnement</span><span class="d">Bases interrogées, notation, tendances</span></span>
       </button>
+      <button class="settings-menu-item" data-view="about">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span><span class="t">À propos</span><span class="d">Ce que l'app peut et ne peut pas faire</span></span>
+      </button>
       <button class="settings-menu-item" id="settingsRefreshBtn">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         <span><span class="t">Actualiser</span><span class="d">Sur mobile, tire l'écran vers le bas depuis l'Accueil</span></span>
@@ -1866,6 +1971,25 @@ function renderSettingsBody(){
   if (refreshOpt) refreshOpt.onclick = () => { document.getElementById("settingsOverlay").style.display = "none"; loadArticles(true); };
 }
 
+const DISCLAIMER_DISMISSED_KEY = "kine-disclaimer-dismissed-v1";
+function renderDisclaimerBanner(){
+  const el = document.getElementById("disclaimerBanner");
+  if (!el) return;
+  if (state.tab !== "accueil") { el.innerHTML = ""; return; }
+  let dismissed = false;
+  try { dismissed = localStorage.getItem(DISCLAIMER_DISMISSED_KEY) === "1"; } catch(e){}
+  if (dismissed) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="disclaimer-banner">
+      <p><b>Up ta Physio</b> est un outil de veille, pas un avis médical. Les notes sont générées automatiquement — vérifie toujours l'article original avant de t'appuyer dessus dans ta pratique.</p>
+      <button id="disclaimerCloseBtn" aria-label="Fermer">✕</button>
+    </div>`;
+  document.getElementById("disclaimerCloseBtn").onclick = () => {
+    try { localStorage.setItem(DISCLAIMER_DISMISSED_KEY, "1"); } catch(e){}
+    el.innerHTML = "";
+  };
+}
+
 function render(){
   renderZoneChips();
   renderDateChips();
@@ -1873,6 +1997,7 @@ function render(){
   renderTypeChips();
   renderKeywordChips();
   renderAuthorBox();
+  renderDisclaimerBanner();
   renderTabbar();
   renderFilterBadge();
   document.getElementById("freshnessNote").innerHTML = `<p>${esc(freshnessLabel())}</p>`;
@@ -1889,6 +2014,7 @@ function renderFilterBadge(){
 
 document.querySelectorAll("#tabbar button").forEach(b => {
   b.onclick = () => {
+    if (state.tab === "podcasts" && b.dataset.tab !== "podcasts") state.podcastView = null;
     state.tab = b.dataset.tab;
     render();
     if (state.tab === "podcasts" && PODCAST_EPISODES.length === 0 && !state.podcastsLoading) {
@@ -1956,6 +2082,7 @@ document.getElementById("filterResetBtn").onclick = () => {
 
 const settingsOverlay = document.getElementById("settingsOverlay");
 document.getElementById("settingsBtn").onclick = () => { state.settingsView = "menu"; renderSettingsBody(); settingsOverlay.style.display = "flex"; };
+document.getElementById("aboutBtn").onclick = () => { state.settingsView = "about"; renderSettingsBody(); settingsOverlay.style.display = "flex"; };
 document.getElementById("settingsCloseBtn").onclick = () => { settingsOverlay.style.display = "none"; };
 settingsOverlay.addEventListener("click", (e) => { if (e.target === settingsOverlay) settingsOverlay.style.display = "none"; });
 
