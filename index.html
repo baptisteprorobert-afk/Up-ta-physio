@@ -1712,7 +1712,7 @@ function podcastShowCardHTML(show){
         ${artwork}
         <div class="podcast-show-info">
           <h3 class="podcast-show-name">${esc(show.name)}</h3>
-          <p class="podcast-show-count" style="color:var(--accent-red,#FF6B6B)">Récupération indisponible pour l'instant</p>
+          <p class="podcast-show-count" style="color:var(--text4)">Récupération bloquée par la plateforme d'hébergement</p>
           <div class="podcast-fallback-links">
             <a href="${appleUrl}" target="_blank" rel="noopener noreferrer">Apple Podcasts</a>
             <a href="${spotifyUrl}" target="_blank" rel="noopener noreferrer">Spotify</a>
@@ -1918,7 +1918,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v61 — 2026-08-21 16:03 UTC";
+const APP_BUILD = "v63 — 2026-08-21 16:32 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
@@ -1984,6 +1984,7 @@ function renderSettingsBody(){
     body.innerHTML = `
       <button class="settings-back" id="settingsBackBtn">← Retour</button>
       <div class="sources-list">
+        <div class="src-item"><b>👋 Qui est derrière Up ta Physio</b><p>Je m'appelle Baptiste Robert, kinésithérapeute. Comme beaucoup d'entre nous, j'ai passé des heures à courir après la littérature scientifique entre deux patients : parcourir PubMed, trier ce qui est vraiment solide, traduire, recouper les sources — un travail nécessaire, mais qui grignote un temps qu'on n'a pas toujours. Up ta Physio est né de cette frustration très concrète : rendre la veille scientifique accessible en quelques minutes plutôt qu'en heures, pour que la profession dans son ensemble puisse s'appuyer plus facilement sur des données à jour. L'application est entièrement <b>gratuite</b> et le restera — l'objectif n'est pas commercial, c'est de faire avancer notre métier collectivement. Elle est encore jeune et continue de s'améliorer au fil des retours : si quelque chose te semble perfectible, dis-le sur Instagram, chaque message compte.</p></div>
         <div class="src-item"><b>Ce que cette application n'est pas</b><p>Up ta Physio n'est pas un dispositif médical, ne pose pas de diagnostic et ne remplace en aucun cas le jugement clinique, la formation continue, ou la lecture critique des publications scientifiques. C'est un outil pour repérer plus vite ce qui pourrait t'intéresser — pas une source de vérité.</p></div>
         <div class="src-item"><b>Sur les notes de fiabilité</b><p>Chaque note (étoiles, type d'étude) est calculée <b>automatiquement</b> à partir de mots-clés détectés dans le titre et le résumé — ce n'est pas une évaluation par un expert, et elle peut se tromper. Utilise-la comme un premier repère, jamais comme un verdict final.</p></div>
         <div class="src-item"><b>Sur les résumés en français</b><p>Résumés et traductions sont générés automatiquement et peuvent contenir des approximations, en particulier sur la terminologie médicale précise. En cas de doute ou avant toute décision clinique, réfère-toi toujours à l'article original.</p></div>
@@ -2023,10 +2024,6 @@ function renderSettingsBody(){
       <button class="settings-menu-item" data-view="fonctionnement">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         <span><span class="t">Fonctionnement</span><span class="d">Notation, zones, auteurs, tendances</span></span>
-      </button>
-      <button class="settings-menu-item" data-view="about">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <span><span class="t">À propos</span><span class="d">Ce que l'app peut et ne peut pas faire</span></span>
       </button>
       <button class="settings-menu-item" id="settingsRefreshBtn">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
