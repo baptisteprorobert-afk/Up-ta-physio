@@ -1125,17 +1125,14 @@ async function pubmedSearchAuthor(surname, initials){
   // connaît que "Rambaud A" à partir du prénom saisi) — une recherche par expression exacte
   // "Rambaud A"[Author] ne matche alors JAMAIS "Rambaud AJM", et on rate l'auteur presque
   // entièrement. Le filtre en aval (articleHasStrongAuthorMatch / inBroadDomain, voir
-  // passesAuthorGate) fait déjà le tri de précision — pas besoin de restreindre à la source.
-  // On interroge quand même EN PLUS la forme "nom + initiales" en parallèle : certaines de ses
-  // publications sont parfois indexées avec exactement cette forme courte, et la fusion des deux
-  // résultats couvre mieux l'ensemble que l'une ou l'autre requête seule.
-  const urls = [`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=30&sort=date&retmode=json`];
-  if (initials) urls.push(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`"${surname} ${initials}"[Author]`)}&retmax=30&sort=date&retmode=json`);
+  // passesAuthorGate) fait déjà le tri de précision — pas besoin de restreindre à la source, et
+  // une seule requête (au lieu de deux) réduit la charge sur l'API NCBI, limitée en débit.
+  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=30&sort=date&retmode=json`;
   try {
-    const results = await Promise.all(urls.map(url => fetch(url).then(r => r.ok ? r.json() : null).catch(()=>null)));
-    const ids = new Set();
-    results.forEach(data => (data?.esearchresult?.idlist || []).forEach(id => ids.add(id)));
-    return Array.from(ids);
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data?.esearchresult?.idlist || [];
   } catch(e){ return []; }
 }
 async function europePmcSearchAuthor(surname, initials){
@@ -1589,10 +1586,13 @@ async function runLiveSearch(){
 
   // Recherche dédiée par auteur suivi : garantit qu'ils remontent s'ils ont publié dans la fenêtre,
   // même si leur article ne serait pas sorti dans le top des recherches générales par zone.
-  // On utilise le nom + initiales pour éviter de confondre avec un homonyme d'un autre domaine.
+  // Étalée dans le temps (150ms entre chaque auteur) : envoyer toutes les requêtes en même temps
+  // pour tous les auteurs suivis peut dépasser la limite de débit de l'API NCBI (~3 req/s sans clé),
+  // provoquant des échecs silencieux qui touchent au hasard certains auteurs plutôt que d'autres.
   const authorPmidIds = new Set();
   let authorResults = [];
-  const authorSearchResults = await Promise.all(AUTHORS.map(async author => {
+  const authorSearchResults = await Promise.all(AUTHORS.map(async (author, i) => {
+    await delay(i * 150);
     const initials = authorInitials(author.full);
     const [authorIds, authorEpmc] = await Promise.all([
       pubmedSearchAuthor(author.surname, initials),
@@ -1662,7 +1662,7 @@ const KEYWORD_TRANSLATIONS = {};
 // Recherche titre/résumé — ne trouve un auteur que par coïncidence si son nom apparaît aussi
 // dans un titre. Complétée juste en dessous par une vraie recherche sur le champ Auteur.
 async function searchTermAcrossSources(q, minPm, maxPm, minIso, maxIso){
-  const pubmedTerm = `(${q}[Title/Abstract])`;
+  const pubmedTerm = `"${q}"[Title/Abstract]`;
   const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(pubmedTerm)}&retmax=20&sort=relevance&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
   const epmcQ = `"${q}" AND FIRST_PDATE:[${minIso} TO ${maxIso}]`;
   const epmcUrl = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(epmcQ)}&format=json&pageSize=20&resultType=core`;
@@ -2256,7 +2256,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v81 — 2026-08-22 13:10 UTC";
+const APP_BUILD = "v83 — 2026-08-22 13:49 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
