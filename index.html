@@ -2280,19 +2280,21 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v90 — 2026-08-22 17:16 UTC";
+const APP_BUILD = "v93 — 2026-08-22 17:27 UTC";
 function sourcesHTML(){
   return `
-    <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
     <div class="sources-list">
-      <div class="src-item"><b>PubMed</b><p>Base de référence en sciences médicales, interrogée en direct à chaque recherche.</p></div>
-      <div class="src-item"><b>Europe PMC</b><p>Base européenne, couvre aussi des preprints et des contenus non indexés sur PubMed.</p></div>
+      <div class="src-item"><b>PubMed</b><p>La base de référence en sciences médicales. Interrogée en direct à chaque recherche.</p></div>
+      <div class="src-item"><b>Europe PMC</b><p>Base européenne, avec des preprints et des contenus qu'on ne trouve pas toujours sur PubMed.</p></div>
       <div class="src-item"><b>Semantic Scholar</b><p>Moteur académique large spectre, avec une bonne couverture hors biomédical strict.</p></div>
-      <div class="src-item"><b>JOSPT</b><p>Requête dédiée en complément de la recherche générale, pour mieux représenter cette revue de référence en kinésithérapie du sport.</p></div>
-      <div class="src-item"><b>Sportsmith</b><p>Tentative de récupération automatique via l'API du site à chaque recherche — mais le site semble bloquer les accès automatisés (protection anti-robot constatée), donc ce contenu peut ne jamais apparaître concrètement. Voir "Nos limites" ci-dessous.</p></div>
+      <div class="src-item"><b>JOSPT</b><p>Requête dédiée en complément de la recherche générale, pour bien représenter cette revue de référence en kinésithérapie du sport.</p></div>
       <div class="src-item"><b>Sport Perf & Science Reports (SPSR)</b><p>Interrogée automatiquement via l'API publique du site.</p></div>
       <div class="src-item"><b>Revues performance</b><p>Requête dédiée sur IJSPP, JSCR, Sports Biomechanics et Journal of Athletic Training, en complément de la recherche générale sur le sprint, la biomécanique et la préparation physique.</p></div>
-      <div class="src-item"><b>⚠️ Nos limites</b><p><b>Embase</b> n'est pas intégrée : c'est une base payante, propriété d'Elsevier, qui nécessite un accès institutionnel (abonnement université/hôpital) — inaccessible pour un projet indépendant et gratuit comme celui-ci. Europe PMC et Semantic Scholar couvrent une bonne partie du même terrain en accès libre, mais pas la totalité : certaines études indexées uniquement sur Embase peuvent nous échapper.<br><br><b>Sportsmith</b> semble bloquer les accès automatisés (protection anti-robot constatée en testant l'accès directement) — la récupération en direct est tentée à chaque recherche, mais peut échouer silencieusement et ne rien remonter. Pas de contenu de secours en remplacement : si la récupération échoue, l'onglet Performance affiche simplement moins de résultats de cette source précise, plutôt que du contenu obsolète.<br><br>Des limites honnêtes, pas cachées.</p></div>
+      <div class="src-item"><b>⚠️ Nos limites</b><p>Certaines bases de référence ne sont pas accessibles ici, et il vaut mieux le savoir plutôt que de le découvrir par surprise.</p>
+        <p><b>Embase</b> est une base payante, propriété d'Elsevier, réservée aux abonnements universitaires ou hospitaliers — hors de portée d'une app indépendante et gratuite.</p>
+        <p><b>Google Scholar</b> n'a volontairement aucune API publique, pour empêcher justement ce genre d'intégration — impossible de s'y brancher, peu importe la méthode.</p>
+        <p><b>Sportsmith</b> semble bloquer les accès automatisés : une récupération est tentée à chaque recherche, mais elle peut échouer sans prévenir et ne rien remonter. Dans ce cas, l'onglet Performance affiche simplement moins de résultats de cette source précise — jamais de contenu périmé à la place.</p>
+        <p>Europe PMC et Semantic Scholar couvrent une bonne partie du même terrain en accès libre, mais pas la totalité : certaines études existent, et on peut passer à côté.</p></div>
     </div>`;
 }
 function fonctionnementHTML(){
@@ -2306,6 +2308,8 @@ function fonctionnementHTML(){
       <div class="src-item"><b>Garde-fous qualité</b><p>La recherche par auteur combine nom et initiales pour éviter la confusion avec un homonyme d'un autre domaine. Un filtre final n'accepte un article que s'il combine un sujet anatomique ou sportif et un véritable angle rééducation-thérapie-entraînement : un article de chirurgie ou d'épidémiologie pure est écarté même s'il mentionne un terme comme "genou" ou "sport". Les noms de comités ou groupes d'étude ne sont pas comptés comme des auteurs.</p></div>
       <div class="src-item"><b>🔓 Accès libre</b><p>Repose sur Unpaywall, un service qui référence les versions gratuites déjà autorisées d'un article (dépôts d'auteurs, archives institutionnelles...). Disponible uniquement si l'article a un DOI et qu'une version légale existe ailleurs.</p></div>
       <div class="src-item"><b>Architecture</b><p>Aucun serveur : chaque recherche s'exécute directement depuis l'appareil, avec une mise en cache de 24h. Le bouton ⟳ force une actualisation immédiate.</p></div>
+      <div class="src-item"><b>Mises à jour</b><p>Rien à faire de particulier : les mises à jour de l'app se téléchargent et s'installent automatiquement en arrière-plan, dès la prochaine ouverture. Pas besoin de la désinstaller, ni de forcer quoi que ce soit. Si l'app est restée ouverte en arrière-plan pendant longtemps sans être vraiment rouverte, ferme-la complètement une fois puis relance-la pour être sûr d'avoir la dernière version.</p></div>
+      <div class="src-item"><b>Un souci ?</b><p>Version actuelle : <b style="color:var(--text2)">${esc(APP_BUILD)}</b>. Si quelque chose ne fonctionne pas comme prévu, écris-nous sur Instagram <a href="https://instagram.com/uptaphysio" target="_blank" rel="noopener noreferrer" style="color:var(--accent,#FF4D8D);font-weight:600;">@uptaphysio</a> en précisant ce numéro de version — ça permet de savoir exactement quelle version corriger.</p></div>
     </div>`;
 }
 
