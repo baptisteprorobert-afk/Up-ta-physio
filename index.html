@@ -331,13 +331,17 @@
 <script>
 const ZONES = [
   { id: "tendon", label: "Tendon", pubmed: '(tendinopathy[Title/Abstract] OR tendon[Title/Abstract])', plain: '(tendinopathy OR tendon)', s2: "tendon tendinopathy" },
-  { id: "cheville", label: "Cheville", pubmed: '(ankle[Title/Abstract] OR dorsiflexion[Title/Abstract] OR foot[Title/Abstract] OR "plantar fasciitis"[Title/Abstract])', plain: '(ankle OR dorsiflexion OR foot OR "plantar fasciitis")', s2: "ankle foot dorsiflexion sprain rehabilitation" },
-  { id: "pied", label: "Pied", pubmed: '(foot[Title/Abstract] OR "plantar fasciitis"[Title/Abstract])', plain: '(foot OR "plantar fasciitis")', s2: "foot plantar fasciitis" },
+  { id: "cheville_pied", label: "Cheville/Pied", pubmed: '(ankle[Title/Abstract] OR dorsiflexion[Title/Abstract] OR foot[Title/Abstract] OR "plantar fasciitis"[Title/Abstract])', plain: '(ankle OR dorsiflexion OR foot OR "plantar fasciitis")', s2: "ankle foot dorsiflexion plantar fasciitis rehabilitation" },
   { id: "ischio", label: "Ischio-jambiers", pubmed: '(hamstring[Title/Abstract])', plain: '(hamstring)', s2: "hamstring injury rehabilitation" },
   { id: "genou", label: "Genou", pubmed: '(knee[Title/Abstract] OR ACL[Title/Abstract] OR patellofemoral[Title/Abstract])', plain: '(knee OR ACL OR patellofemoral)', s2: "knee ACL rehabilitation" },
+  { id: "hanche", label: "Hanche", pubmed: '(hip[Title/Abstract] OR femoroacetabular[Title/Abstract])', plain: '(hip OR femoroacetabular)', s2: "hip femoroacetabular impingement rehabilitation" },
   { id: "epaule", label: "Épaule", pubmed: '(shoulder[Title/Abstract] OR "rotator cuff"[Title/Abstract])', plain: '(shoulder OR "rotator cuff")', s2: "shoulder rotator cuff rehabilitation" },
+  { id: "coude", label: "Coude", pubmed: '(elbow[Title/Abstract] OR epicondylitis[Title/Abstract] OR epicondylalgia[Title/Abstract])', plain: '(elbow OR epicondylitis OR epicondylalgia)', s2: "elbow epicondylitis tennis elbow rehabilitation" },
+  { id: "poignet", label: "Poignet", pubmed: '(wrist[Title/Abstract] OR "carpal tunnel"[Title/Abstract] OR "de quervain"[Title/Abstract])', plain: '(wrist OR "carpal tunnel" OR "de quervain")', s2: "wrist carpal tunnel hand rehabilitation" },
+  { id: "rachis", label: "Rachis", pubmed: '(lumbar[Title/Abstract] OR cervical[Title/Abstract] OR "low back pain"[Title/Abstract] OR "neck pain"[Title/Abstract] OR spine[Title/Abstract])', plain: '(lumbar OR cervical OR "low back pain" OR "neck pain" OR spine)', s2: "spine lumbar cervical low back pain neck pain rehabilitation" },
   { id: "neuro", label: "Neuro", pubmed: '(stroke[Title/Abstract] OR hemiplegia[Title/Abstract] OR parkinson[Title/Abstract])', plain: '(stroke OR hemiplegia OR parkinson)', s2: "stroke neurological rehabilitation physiotherapy" },
-  { id: "cardio", label: "Cardio-respi", pubmed: '(COPD[Title/Abstract] OR "pulmonary rehabilitation"[Title/Abstract] OR "cardiac rehabilitation"[Title/Abstract])', plain: '(COPD OR "pulmonary rehabilitation" OR "cardiac rehabilitation")', s2: "pulmonary cardiac rehabilitation physiotherapy" },
+  { id: "neuro_peripherique", label: "Neuro périphérique", pubmed: '("nerve entrapment"[Title/Abstract] OR "peripheral neuropathy"[Title/Abstract] OR "thoracic outlet"[Title/Abstract] OR neurodynamic[Title/Abstract])', plain: '("nerve entrapment" OR "peripheral neuropathy" OR "thoracic outlet" OR neurodynamic)', s2: "nerve entrapment peripheral neuropathy thoracic outlet neurodynamics" },
+  { id: "cardio", label: "Cardio-respi", pubmed: '(COPD[Title/Abstract] OR "pulmonary rehabilitation"[Title/Abstract] OR "cardiac rehabilitation"[Title/Abstract] OR "thoracic outlet"[Title/Abstract] OR "arterial insufficiency"[Title/Abstract] OR "venous thrombosis"[Title/Abstract])', plain: '(COPD OR "pulmonary rehabilitation" OR "cardiac rehabilitation" OR "thoracic outlet" OR "arterial insufficiency" OR "venous thrombosis")', s2: "pulmonary cardiac rehabilitation vascular arterial venous thoracic outlet physiotherapy" },
 ];
 
 const DEFAULT_AUTHORS = [
@@ -371,7 +375,11 @@ function splitFullName(name){
   const initials = parts.slice(0,-1).join(" ").split(/[\s-]+/).filter(Boolean).map(p=>p[0]||"").join("").toUpperCase();
   return { surname, initials };
 }
-function normSurname(s){ return normText(s || "").replace(/['\u2019\-\s]/g, ""); }
+function normSurname(s){ return normText(s || "").replace(/[\-\s]/g, ""); }
+// L'apostrophe n'est plus retirée volontairement (contrairement à avant) : "M'Baye" et "Mbaye"
+// peuvent être deux familles différentes, pas juste une variante d'écriture du même nom — traiter
+// ça comme identique avait déjà fait remonter un article sans rapport, attribué par erreur à tort
+// à un auteur suivi simplement à cause d'un nom de famille très courant.
 // Force du match nom+initiales : "strong" quand les initiales complètes concordent (ex. "JB" sur les
 // deux côtés — fiable, peu d'homonymes possibles), "weak" quand on ne peut comparer que la première
 // lettre ou rien du tout (ex. Massamba Mbaye n'a qu'une seule initiale "M", très courante — donc
@@ -589,6 +597,27 @@ const KINE_TOPIC_TERMS = [
   "adhesive capsulitis",
   "frozen shoulder",
   "slap lesion",
+  // ---- Coude ----
+  "\\belbow\\b",
+  "epicondyl",
+  "tennis elbow",
+  "golfer's elbow",
+  // ---- Poignet / main ----
+  "\\bwrist\\b",
+  "carpal tunnel",
+  "de quervain",
+  "\\btfcc\\b",
+  // ---- Neuro périphérique / vasculaire ----
+  "nerve entrapment",
+  "peripheral neuropathy",
+  "peripheral nerve",
+  "neurodynamic",
+  "compressive neuropathy",
+  "thoracic outlet",
+  "nerve compression",
+  "arterial insufficiency",
+  "venous thrombosis",
+  "vascular compression",
   // ---- Tendon ----
   "\\btendon",
   "tendinopathy",
@@ -599,6 +628,11 @@ const KINE_TOPIC_TERMS = [
   "\\blumbar\\b",
   "sciatica",
   "\\bwhiplash\\b",
+  "\\bcervical\\b",
+  "neck pain",
+  "\\bspine\\b",
+  "spinal",
+  "thoracic spine",
   // ---- Neuro ----
   "\\bstroke\\b",
   "hemiplegia",
@@ -736,15 +770,15 @@ const SPORTSMITH_SEED = [
     avis:"Article de réflexion qui propose une piste d'entraînement (excentriques rapides) encore peu étudiée spécifiquement en contexte post-LCA. Intéressant pour ouvrir la réflexion, mais pas encore validé par des essais dédiés. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
     summary:"Plaide pour intégrer des méthodes d'entraînement excentrique rapide (plutôt que lentes et contrôlées) dans le retour au sport après LCA, pour mieux préparer les actions de freinage réelles du sport.",
     url:"https://www.sportsmith.co/articles/rebuilding-a-sport-ready-athlete-reflexive-and-accelerated-eccentrics-post-acl-injury/" },
-  { id:"sm-7", zones:["cheville"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Aucune entorse de cheville n'est \"juste une simple entorse\"", source:"Sportsmith", date:"sept. 2025", publishedAt:"2025-09-23", authors:[], followed:false, rating:4,
+  { id:"sm-7", zones:["cheville_pied"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Aucune entorse de cheville n'est \"juste une simple entorse\"", source:"Sportsmith", date:"sept. 2025", publishedAt:"2025-09-23", authors:[], followed:false, rating:4,
     avis:"Synthèse clinique dense qui croise plusieurs sources sur les conséquences à long terme d'une entorse mal rééduquée. Bien référencé et directement actionnable pour la pratique. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
     summary:"Détaille les conséquences à long terme d'une entorse de cheville mal rééduquée (instabilité, tendinite, arthrose) et propose une batterie de tests cliniques simples pour objectiver la récupération.",
     url:"https://www.sportsmith.co/articles/no-ankle-sprain-is-just-a-simple-ankle-sprain/" },
-  { id:"sm-8", zones:["cheville"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Entorse latérale de cheville : jamais \"juste une cheville qui tourne\"", source:"Sportsmith", date:"2022", publishedAt:"2022-06-24", authors:[], followed:false, rating:3,
+  { id:"sm-8", zones:["cheville_pied"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Entorse latérale de cheville : jamais \"juste une cheville qui tourne\"", source:"Sportsmith", date:"2022", publishedAt:"2022-06-24", authors:[], followed:false, rating:3,
     avis:"Bon rappel pratique orienté prévention de l'instabilité chronique, avec des progressions d'exercices concrètes. Reste un article d'opinion clinique, pas une étude évaluée par les pairs. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
     summary:"Propose un cadre de testing pour repérer les déficits sensorimoteurs après une entorse latérale de cheville, avec des progressions d'exercices pour limiter le risque d'instabilité chronique.",
     url:"https://www.sportsmith.co/articles/lateral-ankle-sprain-rehabilitation/" },
-  { id:"sm-9", zones:["cheville","neuro"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Approche neurocognitive de la rééducation : étude de cas cheville", source:"Sportsmith", date:"juil. 2024", publishedAt:"2024-07-25", authors:[], followed:false, rating:3,
+  { id:"sm-9", zones:["cheville_pied","neuro"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Approche neurocognitive de la rééducation : étude de cas cheville", source:"Sportsmith", date:"juil. 2024", publishedAt:"2024-07-25", authors:[], followed:false, rating:3,
     avis:"Étude de cas unique qui illustre une approche originale (charge cognitive pendant la rééducation), mais reste anecdotique en l'état. Piste intéressante à confirmer par des études plus larges. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
     summary:"Étude de cas explorant l'ajout d'exercices à charge cognitive (prise de décision, attention divisée) dans la rééducation d'une entorse de cheville récidivante, pour mieux préparer au chaos sensoriel du sport réel.",
     url:"https://www.sportsmith.co/articles/neurocognitive-approach-to-rehab-lateral-ankle-sprain-case-study/" },
@@ -842,6 +876,17 @@ const SEARCH_SYNONYMS = {
   "retour au sport": ["return to sport", "return to play"],
   "entorse": ["sprain"],
   "tendinopathie": ["tendinopathy"],
+  "hanche": ["hip"],
+  "coude": ["elbow"],
+  "epicondylite": ["epicondylitis", "tennis elbow"],
+  "poignet": ["wrist"],
+  "canal carpien": ["carpal tunnel"],
+  "rachis": ["spine", "lumbar", "cervical"],
+  "lombaire": ["lumbar", "low back pain"],
+  "cervicale": ["cervical", "neck pain"],
+  "nerf": ["nerve", "neuropathy"],
+  "nerveux": ["nerve", "neuropathy", "neurodynamic"],
+  "defile thoracique": ["thoracic outlet"],
 };
 function matchesSearch(a, rawQuery){
   const q = normText(rawQuery).trim();
@@ -1134,9 +1179,9 @@ async function pubmedSearchAuthor(surname, initials){
   // un auteur avec PLUS d'initiales que ce qu'on a en mémoire (ex. "Rambaud AJM" alors qu'on ne
   // connaît que "Rambaud A" à partir du prénom saisi) — une recherche par expression exacte
   // "Rambaud A"[Author] ne matche alors JAMAIS "Rambaud AJM", et on rate l'auteur presque
-  // entièrement. Le filtre en aval (articleHasStrongAuthorMatch / inBroadDomain, voir
-  // passesAuthorGate) fait déjà le tri de précision — pas besoin de restreindre à la source, et
-  // une seule requête (au lieu de deux) réduit la charge sur l'API NCBI, limitée en débit.
+  // entièrement. Le filtre en aval (inBroadDomain, voir passesAuthorGate) fait déjà le tri de
+  // précision — pas besoin de restreindre à la source, et une seule requête (au lieu de deux)
+  // réduit la charge sur l'API NCBI, limitée en débit.
   const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=200&sort=date&retmode=json`;
   try {
     const res = await fetch(url);
@@ -1628,7 +1673,12 @@ async function runLiveSearch(){
   // Pour les auteurs suivis : un match "fort" (initiales complètes, ex. "JB") passe sans vérification
   // de sujet — fiable par nature. Un match "faible" (une seule initiale ambiguë, ex. "M") reste soumis
   // au filtre de sujet, sinon un homonyme s'invite (vécu avec un autre "Mbaye" en FIV).
-  const passesAuthorGate = a => articleHasStrongAuthorMatch(a) || inBroadDomain(a);
+  // Une correspondance d'auteur "forte" (nom + initiale) ne suffit plus à elle seule : avec un nom
+  // de famille courant (Mbaye, Rambaud, Girard...), elle peut coïncider avec un tout autre
+  // chercheur sans aucun rapport avec la kiné/sport. On exige donc systématiquement la pertinence
+  // de domaine, comme pour la barre de recherche générale — sinon, élargir le plafond de résultats
+  // (pour mieux couvrir un auteur suivi) fait aussi mécaniquement remonter plus d'homonymes.
+  const passesAuthorGate = a => inBroadDomain(a);
   const authorPubmed = pubmedArticles.filter(a => authorPmidIds.has(a.pmid) && !perfPmidIds.has(a.pmid)).map(tagPerfIfOutOfClinicalScope).filter(passesAuthorGate);
   const perfPubmed = pubmedArticles.filter(a => perfPmidIds.has(a.pmid)).map(a => ({ ...a, performance: true })).filter(inBroadDomain);
   const generalPubmed = pubmedArticles.filter(a => !authorPmidIds.has(a.pmid) && !perfPmidIds.has(a.pmid));
@@ -1659,7 +1709,7 @@ function finalizeArticle(a){
 }
 
 // ---------- Recherche live par mot-clé libre (déclenchée depuis la barre de recherche) ----------
-// La recherche normale ne filtre que dans ce qui a déjà été ramené par les 8 zones/auteurs/tendances —
+// La recherche normale ne filtre que dans ce qui a déjà été ramené par les zones/auteurs/tendances —
 // un terme précis (ex. "décélération") peut très bien n'apparaître dans aucun de ces articles-là sans
 // pour autant être absent de PubMed. On lance donc une vraie requête pour le terme tapé, avec une
 // fenêtre plus large (3 ans) puisque c'est une recherche volontaire, pas le fil passif.
@@ -2266,7 +2316,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v84 — 2026-08-22 14:14 UTC";
+const APP_BUILD = "v87 — 2026-08-22 16:43 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
@@ -2285,7 +2335,7 @@ function sourcesHTML(){
 function fonctionnementHTML(){
   return `
     <div class="sources-list">
-      <div class="src-item"><b>Zones suivies</b><p>8 zones couvrent le cœur de l'application : tendon, cheville, pied, ischio-jambiers, genou, épaule, neuro, cardio-respiratoire. Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
+      <div class="src-item"><b>Zones suivies</b><p>12 zones couvrent le cœur de l'application : tendon, cheville/pied, ischio-jambiers, genou, hanche, épaule, coude, poignet, rachis, neuro, neuro périphérique, cardio-respiratoire (incluant le volet vasculaire artériel/veineux). Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
       <div class="src-item"><b>Auteurs suivis</b><p>Liste entièrement personnalisable depuis Paramètres → Auteurs suivis : ajoute ou retire qui tu veux, à tout moment. Chaque auteur suivi bénéficie d'une recherche dédiée par nom, sans limite de date (ses 30 derniers articles par source, même anciens) — le reste de l'application reste limité aux 90 derniers jours.</p></div>
       <div class="src-item"><b>Onglet Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, en complément du contenu Sportsmith.</p></div>
       <div class="src-item"><b>Note sur 5 étoiles</b><p>Calculée automatiquement à partir de 3 critères : <b>le type d'étude</b> (méta-analyse et revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous), <b>la taille d'échantillon</b> quand elle est détectable dans le résumé, et <b>la revue</b> (bonus pour une publication dans une revue de référence : AJSM, BJSM, JOSPT, Sports Medicine...). Le détail du calcul est disponible sous chaque note, pour chaque article.</p></div>
