@@ -121,6 +121,7 @@
     letter-spacing: .03em; text-transform: uppercase; padding: 6px 14px; border-radius: 999px;
     background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
   .chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .chip-sub { border-style: dashed; opacity: .88; }
 
   main { padding: 8px 16px calc(90px + env(safe-area-inset-bottom)); max-width: 640px; margin: 0 auto; }
 
@@ -330,19 +331,29 @@
 
 <script>
 const ZONES = [
-  { id: "tendon", label: "Tendon", pubmed: '(tendinopathy[Title/Abstract] OR tendon[Title/Abstract])', plain: '(tendinopathy OR tendon)', s2: "tendon tendinopathy" },
+  { id: "tendon", label: "Système tendineux", pubmed: '(tendinopathy[Title/Abstract] OR tendon[Title/Abstract])', plain: '(tendinopathy OR tendon)', s2: "tendon tendinopathy" },
   { id: "cheville_pied", label: "Cheville/Pied", pubmed: '(ankle[Title/Abstract] OR dorsiflexion[Title/Abstract] OR foot[Title/Abstract] OR "plantar fasciitis"[Title/Abstract])', plain: '(ankle OR dorsiflexion OR foot OR "plantar fasciitis")', s2: "ankle foot dorsiflexion plantar fasciitis rehabilitation" },
-  { id: "ischio", label: "Ischio-jambiers", pubmed: '(hamstring[Title/Abstract])', plain: '(hamstring)', s2: "hamstring injury rehabilitation" },
   { id: "genou", label: "Genou", pubmed: '(knee[Title/Abstract] OR ACL[Title/Abstract] OR patellofemoral[Title/Abstract])', plain: '(knee OR ACL OR patellofemoral)', s2: "knee ACL rehabilitation" },
   { id: "hanche", label: "Hanche", pubmed: '(hip[Title/Abstract] OR femoroacetabular[Title/Abstract])', plain: '(hip OR femoroacetabular)', s2: "hip femoroacetabular impingement rehabilitation" },
   { id: "epaule", label: "Épaule", pubmed: '(shoulder[Title/Abstract] OR "rotator cuff"[Title/Abstract])', plain: '(shoulder OR "rotator cuff")', s2: "shoulder rotator cuff rehabilitation" },
   { id: "coude", label: "Coude", pubmed: '(elbow[Title/Abstract] OR epicondylitis[Title/Abstract] OR epicondylalgia[Title/Abstract])', plain: '(elbow OR epicondylitis OR epicondylalgia)', s2: "elbow epicondylitis tennis elbow rehabilitation" },
   { id: "poignet", label: "Poignet", pubmed: '(wrist[Title/Abstract] OR "carpal tunnel"[Title/Abstract] OR "de quervain"[Title/Abstract])', plain: '(wrist OR "carpal tunnel" OR "de quervain")', s2: "wrist carpal tunnel hand rehabilitation" },
   { id: "rachis", label: "Rachis", pubmed: '(lumbar[Title/Abstract] OR cervical[Title/Abstract] OR "low back pain"[Title/Abstract] OR "neck pain"[Title/Abstract] OR spine[Title/Abstract])', plain: '(lumbar OR cervical OR "low back pain" OR "neck pain" OR spine)', s2: "spine lumbar cervical low back pain neck pain rehabilitation" },
-  { id: "neuro", label: "Neuro", pubmed: '(stroke[Title/Abstract] OR hemiplegia[Title/Abstract] OR parkinson[Title/Abstract])', plain: '(stroke OR hemiplegia OR parkinson)', s2: "stroke neurological rehabilitation physiotherapy" },
-  { id: "neuro_peripherique", label: "Neuro périphérique", pubmed: '("nerve entrapment"[Title/Abstract] OR "peripheral neuropathy"[Title/Abstract] OR "thoracic outlet"[Title/Abstract] OR neurodynamic[Title/Abstract])', plain: '("nerve entrapment" OR "peripheral neuropathy" OR "thoracic outlet" OR neurodynamic)', s2: "nerve entrapment peripheral neuropathy thoracic outlet neurodynamics" },
+  { id: "neuro", label: "SNC", pubmed: '(stroke[Title/Abstract] OR hemiplegia[Title/Abstract] OR parkinson[Title/Abstract])', plain: '(stroke OR hemiplegia OR parkinson)', s2: "stroke neurological rehabilitation physiotherapy" },
+  { id: "neuro_peripherique", label: "SNP", pubmed: '("nerve entrapment"[Title/Abstract] OR "peripheral neuropathy"[Title/Abstract] OR "thoracic outlet"[Title/Abstract] OR neurodynamic[Title/Abstract])', plain: '("nerve entrapment" OR "peripheral neuropathy" OR "thoracic outlet" OR neurodynamic)', s2: "nerve entrapment peripheral neuropathy thoracic outlet neurodynamics" },
   { id: "cardio", label: "Cardio-respi", pubmed: '(COPD[Title/Abstract] OR "pulmonary rehabilitation"[Title/Abstract] OR "cardiac rehabilitation"[Title/Abstract] OR "thoracic outlet"[Title/Abstract] OR "arterial insufficiency"[Title/Abstract] OR "venous thrombosis"[Title/Abstract])', plain: '(COPD OR "pulmonary rehabilitation" OR "cardiac rehabilitation" OR "thoracic outlet" OR "arterial insufficiency" OR "venous thrombosis")', s2: "pulmonary cardiac rehabilitation vascular arterial venous thoracic outlet physiotherapy" },
+  // ---- Système musculaire : sous-groupe déplié depuis une puce parente dans l'interface (voir
+  // MUSCLE_ZONE_IDS et renderZoneChips) — chacun reste une zone à part entière pour la recherche.
+  { id: "muscle_ischio", label: "Ischio-jambiers", pubmed: '(hamstring[Title/Abstract])', plain: '(hamstring)', s2: "hamstring injury rehabilitation" },
+  { id: "muscle_mollet", label: "Gastrocnémiens/Soléaire", pubmed: '(gastrocnemius[Title/Abstract] OR soleus[Title/Abstract] OR "calf muscle"[Title/Abstract])', plain: '(gastrocnemius OR soleus OR "calf muscle")', s2: "gastrocnemius soleus calf muscle injury rehabilitation" },
+  { id: "muscle_quadriceps", label: "Quadriceps", pubmed: '(quadriceps[Title/Abstract])', plain: '(quadriceps)', s2: "quadriceps muscle injury rehabilitation" },
+  { id: "muscle_fessiers", label: "Fessiers", pubmed: '(gluteus[Title/Abstract] OR gluteal[Title/Abstract])', plain: '(gluteus OR gluteal)', s2: "gluteal gluteus muscle rehabilitation" },
+  { id: "muscle_adducteurs", label: "Adducteurs", pubmed: '(adductor[Title/Abstract] OR groin[Title/Abstract])', plain: '(adductor OR groin)', s2: "adductor groin muscle injury rehabilitation" },
+  { id: "muscle_deltoide", label: "Deltoïde", pubmed: '(deltoid[Title/Abstract])', plain: '(deltoid)', s2: "deltoid muscle shoulder rehabilitation" },
 ];
+// Identifiants des zones qui apparaissent regroupées sous la puce dépliable "Système musculaire"
+// plutôt qu'affichées à plat comme les autres — voir renderZoneChips.
+const MUSCLE_ZONE_IDS = ["muscle_ischio", "muscle_mollet", "muscle_quadriceps", "muscle_fessiers", "muscle_adducteurs", "muscle_deltoide"];
 
 const DEFAULT_AUTHORS = [
   { full: "François Fourchet", surname: "Fourchet" },
@@ -745,64 +756,8 @@ function isNewSincePreviousVisit(publishedAt){
 }
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24h
 
-const SPORTSMITH_SEED = [
-  { id:"sm-1", zones:["ischio","tendon"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Retour en 4 semaines après lésion du tendon intramusculaire des ischios", source:"Sportsmith", date:"2025", publishedAt:"2025-01-01", authors:[], followed:false, rating:3,
-    avis:"Il s'agit d'une étude de cas isolée, donc difficile à généraliser à d'autres profils d'athlètes. Contenu de type retour d'expérience clinique, pas une étude à comité de lecture. Utile pour orienter la réflexion, mais à interpréter avec prudence. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Étude de cas d'un footballeur professionnel avec lésion du tendon intramusculaire du biceps fémoral, avec reprise en quatre semaines grâce à un suivi incluant la thermographie.",
-    url:"https://www.sportsmith.co/articles/rehabbing-a-pro-footballers-hamstring-intramuscular-tendon-injury/" },
-  { id:"sm-2", zones:["ischio","tendon"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Rééducation non chirurgicale des ruptures complètes du tendon des ischios", source:"Sportsmith", date:"2025", publishedAt:"2025-01-01", authors:[], followed:false, rating:3,
-    avis:"Synthèse pratique qui s'appuie sur peu de données publiées, faute de littérature solide sur cette situation précise. Bon point de départ clinique mais pas un niveau de preuve élevé. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Synthèse des stratégies de charge progressive quand une rupture tendineuse des ischio-jambiers est gérée sans chirurgie, faute de recommandations claires dans la littérature.",
-    url:"https://www.sportsmith.co/articles/non-surgical-rehab-and-outcomes-for-complete-hamstring-tendon-tears/" },
-  { id:"sm-3", zones:["genou"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Un score global d'athlétisme pour guider le retour au sport après LCA", source:"Sportsmith", date:"2023", publishedAt:"2023-12-06", authors:[], followed:false, rating:3,
-    avis:"Article d'opinion clinique qui propose un score composite plutôt qu'une validation scientifique complète de l'outil. Idée intéressante et bien argumentée, mais encore à confirmer par des études dédiées. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Propose de remplacer les simples indices de symétrie entre jambes par un score composite (Total Score of Athleticism) combinant plusieurs tests de performance pour juger de la préparation au retour au sport après LCA.",
-    url:"https://www.sportsmith.co/articles/using-a-total-score-of-athleticism-to-guide-return-to-sport-post-acl-injury/" },
-  { id:"sm-4", zones:["genou"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Guide complet de testing et profiling après reconstruction du LCA", source:"Sportsmith", date:"2021", publishedAt:"2021-12-17", authors:[], followed:false, rating:4,
-    avis:"Synthèse très complète et bien sourcée, qui croise de nombreuses études sur les tests fonctionnels post-LCA. Un des articles Sportsmith les plus construits sur ce sujet, utile comme référence pratique. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Panorama des tests de saut et de profiling utilisés pour évaluer la préparation d'un athlète au retour au sport après reconstruction du LCA, avec leurs limites (asymétries persistantes, jambe saine comme référence imparfaite).",
-    url:"https://www.sportsmith.co/articles/essential-guide-to-testing-and-profiling-an-athlete-during-rehabilitation-and-return-to-play-after-aclr/" },
-  { id:"sm-5", zones:["genou"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Sauts horizontaux et verticaux dans le retour au sport après LCA", source:"Sportsmith", date:"2023", publishedAt:"2023-11-09", authors:[], followed:false, rating:3,
-    avis:"S'appuie sur une étude de l'autrice elle-même en plus de la littérature existante, ce qui reste informatif mais moins indépendant qu'une revue tierce. Bon niveau de détail pratique sur les tests de saut. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Explique pourquoi le saut vertical en unipodal révèle mieux les déficits résiduels de genou après LCA que le saut horizontal, avec des données sur les asymétries de force encore présentes au moment du retour au sport.",
-    url:"https://www.sportsmith.co/articles/the-role-of-horizontal-and-vertical-jump-tests-during-acl-return-to-play/" },
-  { id:"sm-6", zones:["genou"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Excentriques rapides et réflexifs après blessure au LCA", source:"Sportsmith", date:"mars 2026", publishedAt:"2026-03-24", authors:[], followed:false, rating:3,
-    avis:"Article de réflexion qui propose une piste d'entraînement (excentriques rapides) encore peu étudiée spécifiquement en contexte post-LCA. Intéressant pour ouvrir la réflexion, mais pas encore validé par des essais dédiés. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Plaide pour intégrer des méthodes d'entraînement excentrique rapide (plutôt que lentes et contrôlées) dans le retour au sport après LCA, pour mieux préparer les actions de freinage réelles du sport.",
-    url:"https://www.sportsmith.co/articles/rebuilding-a-sport-ready-athlete-reflexive-and-accelerated-eccentrics-post-acl-injury/" },
-  { id:"sm-7", zones:["cheville_pied"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Aucune entorse de cheville n'est \"juste une simple entorse\"", source:"Sportsmith", date:"sept. 2025", publishedAt:"2025-09-23", authors:[], followed:false, rating:4,
-    avis:"Synthèse clinique dense qui croise plusieurs sources sur les conséquences à long terme d'une entorse mal rééduquée. Bien référencé et directement actionnable pour la pratique. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Détaille les conséquences à long terme d'une entorse de cheville mal rééduquée (instabilité, tendinite, arthrose) et propose une batterie de tests cliniques simples pour objectiver la récupération.",
-    url:"https://www.sportsmith.co/articles/no-ankle-sprain-is-just-a-simple-ankle-sprain/" },
-  { id:"sm-8", zones:["cheville_pied"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Entorse latérale de cheville : jamais \"juste une cheville qui tourne\"", source:"Sportsmith", date:"2022", publishedAt:"2022-06-24", authors:[], followed:false, rating:3,
-    avis:"Bon rappel pratique orienté prévention de l'instabilité chronique, avec des progressions d'exercices concrètes. Reste un article d'opinion clinique, pas une étude évaluée par les pairs. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Propose un cadre de testing pour repérer les déficits sensorimoteurs après une entorse latérale de cheville, avec des progressions d'exercices pour limiter le risque d'instabilité chronique.",
-    url:"https://www.sportsmith.co/articles/lateral-ankle-sprain-rehabilitation/" },
-  { id:"sm-9", zones:["cheville_pied","neuro"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Approche neurocognitive de la rééducation : étude de cas cheville", source:"Sportsmith", date:"juil. 2024", publishedAt:"2024-07-25", authors:[], followed:false, rating:3,
-    avis:"Étude de cas unique qui illustre une approche originale (charge cognitive pendant la rééducation), mais reste anecdotique en l'état. Piste intéressante à confirmer par des études plus larges. (contenu Sportsmith, pas noté par le même barème que les publications scientifiques)",
-    summary:"Étude de cas explorant l'ajout d'exercices à charge cognitive (prise de décision, attention divisée) dans la rééducation d'une entorse de cheville récidivante, pour mieux préparer au chaos sensoriel du sport réel.",
-    url:"https://www.sportsmith.co/articles/neurocognitive-approach-to-rehab-lateral-ankle-sprain-case-study/" },
-  { id:"sf-1", zones:["ischio"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Le profil force-vitesse expliqué par Pierre Samozino", source:"SimpliFaster", date:"2025", publishedAt:"2025-06-28", authors:["Samozino"], followed:false, rating:4,
-    avis:"Entretien direct avec l'un des chercheurs qui a posé les bases du profil force-vitesse (avec Jean-Benoît Morin) — contenu de vulgarisation solide, mais un entretien reste moins rigoureux qu'un article évalué par les pairs. (contenu SimpliFaster, pas noté par le même barème que les publications scientifiques)",
-    summary:"Pierre Samozino explique comment le profil puissance-force-vitesse permet de comprendre pourquoi un athlète est plutôt \"orienté force\" ou \"orienté vitesse\" en sprint et en saut, et comment cela oriente la prévention des lésions aux ischio-jambiers.",
-    url:"https://simplifaster.com/articles/force-velocity-profiling-pierre-samozino/" },
-  { id:"sf-2", zones:["ischio","tendon"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Pourquoi la technique de sprint protège (aussi) des lésions aux ischios", source:"SimpliFaster", date:"déc. 2025", publishedAt:"2025-12-02", authors:[], followed:false, rating:3,
-    avis:"Bon lien entre biomécanique de course et prévention des blessures, mais reste un article d'opinion clinique construit sur une expérience personnelle plutôt qu'une étude formelle. (contenu SimpliFaster, pas noté par le même barème que les publications scientifiques)",
-    summary:"Explique pourquoi la majorité des lésions aux ischio-jambiers survient en phase d'accélération et de vitesse maximale, et comment une technique de course mal maîtrisée expose davantage à la blessure malgré une bonne force brute.",
-    url:"https://simplifaster.com/articles/why-proper-sprinting-technique-matters-a-foundation-for-safer-faster-and-more-confident-athletes/" },
-  { id:"sf-3", zones:[], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"La \"force de sprint\", qualité clé pour courir plus vite", source:"SimpliFaster", date:"2025", publishedAt:"2025-01-27", authors:[], followed:false, rating:3,
-    avis:"Retour d'expérience de 35 ans de coaching, riche en pistes pratiques, mais sans données chiffrées ni protocole formalisé. (contenu SimpliFaster, pas noté par le même barème que les publications scientifiques)",
-    summary:"Un coach de sprint de longue date présente la \"force de sprint\" comme qualité déterminante pour courir plus vite, sauter plus haut et être plus explosif, avec des méthodes concrètes pour l'entraîner.",
-    url:"https://simplifaster.com/articles/sprint-strength-limb-velocity-speed-qualities/" },
-  { id:"spsr-1", zones:["genou"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Le \"Swiss Ball Jump\", un nouvel exercice pour développer la vitesse d'extension du membre inférieur", source:"Sport Perf & Science Reports", date:"2026", publishedAt:"2026-02-24", authors:["Morin"], followed:true, rating:3,
-    avis:"Rapport de type \"proof of concept\" sur petit échantillon — méthodologiquement honnête sur ses limites, mais encore préliminaire. Diffusé sur une plateforme de rapports rapides terrain, pas une revue à comité de lecture classique. (contenu SPSR, pas noté par le même barème que les publications scientifiques)",
-    summary:"Présente le \"Swiss Ball Jump\", un exercice où le ballon suisse se comprime puis restitue son énergie, produisant des vitesses d'extension du membre inférieur nettement supérieures au squat ou au saut classique — utile pour cibler un déficit de vitesse dans un profil force-vitesse, à faible coût et facile à mettre en place sur le terrain.",
-    url:"https://sportperfsci.com/swiss-ball-jump-to-stimulate-lower-limb-extension-velocity-a-proof-of-concept/" },
-  { id:"spsr-2", zones:["ischio"], performance:true, lang:"fr", studyType:"sportsmith", studyTypeLabel:"Contenu pratique", title:"Le \"Jurdan Sprint Table Test\" par vidéo smartphone pour dépister le risque aux ischio-jambiers", source:"Sport Perf & Science Reports", date:"janv. 2026", publishedAt:"2026-01-15", authors:["Mendiguchia"], followed:true, rating:3,
-    avis:"Outil de terrain pensé pour être accessible (juste un smartphone), mais reste un rapport de faisabilité/fiabilité plutôt qu'un essai contrôlé sur l'efficacité en prévention réelle. Diffusé sur une plateforme de rapports rapides terrain. (contenu SPSR, pas noté par le même barème que les publications scientifiques)",
-    summary:"Décrit un test filmable au smartphone pour évaluer la coordination bassin-hanche pendant une tâche mobilisant la chaîne postérieure, comme outil de dépistage du risque de blessure aux ischio-jambiers chez le sportif, en lien avec les travaux de Jurdan Mendiguchia sur le sprint.",
-    url:"https://sportperfsci.com/wp-content/uploads/2026/01/SPSR276_Buchheit.pdf" },
-];
+// (Les fiches Sportsmith/SimpliFaster/SPSR écrites à la main ont été retirées — l'app ne montre
+// désormais que du contenu récupéré en direct depuis les sources listées dans Paramètres → Sources.)
 
 const THEME_KEY = "kine-theme-v1";
 function getTheme(){ try { return localStorage.getItem(THEME_KEY) || "dark"; } catch(e){ return "dark"; } }
@@ -813,8 +768,8 @@ function setTheme(t){
   if (meta) meta.setAttribute("content", t === "light" ? "#F4F5F2" : "#0E1013");
 }
 
-let ARTICLES = SPORTSMITH_SEED;
-let state = { tab: "accueil", zone: "all", authors: [], dateFilter: "all", minRating: 0, studyType: "all", query: "", searching: false, live: false, fetchedAt: null, settingsView: "menu", podcastsLoading: false, activeKeywords: [], keywordSearching: false, podcastView: null, mustReadLoading: false, mustReadSort: "citations" };
+let ARTICLES = [];
+let state = { tab: "accueil", zone: "all", authors: [], dateFilter: "all", minRating: 0, studyType: "all", query: "", searching: false, live: false, fetchedAt: null, settingsView: "menu", podcastsLoading: false, activeKeywords: [], keywordSearching: false, podcastView: null, mustReadLoading: false, mustReadSort: "citations", muscleMenuOpen: false };
 const DATE_FILTERS = [{id:"all",label:"Tout"},{id:"7",label:"7 jours"},{id:"30",label:"30 jours"},{id:"90",label:"90 jours"},{id:"365",label:"1 an"}];
 const STAR_FILTERS = [{id:0,label:"Toutes notes"},{id:3,label:"★ 3+"},{id:4,label:"★ 4+"},{id:5,label:"★ 5"}];
 const TYPE_FILTERS = [{id:"all",label:"Tous types"},{id:"meta",label:"Méta-analyses & revues"},{id:"rct",label:"Essais randomisés"},{id:"cohort",label:"Cohortes"},{id:"case",label:"Cas / pilotes"}];
@@ -1485,7 +1440,7 @@ async function searchSPSR(minIso, maxIso){
 }
 // Tentative pour Sportsmith : contrairement à SPSR, je n'ai pas de preuve que ce soit du WordPress —
 // si l'endpoint n'existe pas ou répond autre chose que du JSON WP, ça retombe silencieusement à [].
-// Les fiches écrites à la main (SPORTSMITH_SEED) restent le filet de sécurité dans tous les cas.
+// En cas d'échec, la fonction retombe silencieusement sur un tableau vide.
 async function searchSportsmith(minIso, maxIso){
   const url = `https://www.sportsmith.co/wp-json/wp/v2/posts?per_page=25&orderby=date&order=desc&after=${minIso}T00:00:00`;
   const res = await fetchWithCorsFallback(url);
@@ -1693,7 +1648,6 @@ async function runLiveSearch(){
 
   let merged = dedupe(filteredPool);
   merged = merged.map(finalizeArticle);
-  merged = merged.concat(SPORTSMITH_SEED);
   merged.sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
   return merged;
 }
@@ -1848,7 +1802,7 @@ async function loadArticles(force){
     if (pull) pull.classList.add("loading");
     render();
     const results = await runLiveSearch();
-    if (results.length > SPORTSMITH_SEED.length) {
+    if (results.length > 0) {
       // Fusion avec le pool existant plutôt que remplacement total : avant, une actualisation
       // pouvait faire disparaître un article encore pertinent simplement parce qu'il ne faisait
       // plus partie du "top N le plus récent" de sa zone. On garde ce qui a déjà été vu, on met à
@@ -1895,9 +1849,19 @@ function starsHTML(n){
 
 function renderZoneChips(){
   const el = document.getElementById("zoneChips");
-  const chips = [{id:"all", label:"Tout"}, ...ZONES];
-  el.innerHTML = chips.map(z => `<button class="chip ${state.zone===z.id?'active':''}" data-zone="${z.id}">${esc(z.label)}</button>`).join("");
-  el.querySelectorAll("button").forEach(b => b.onclick = () => { state.zone = b.dataset.zone; render(); });
+  const flatZones = ZONES.filter(z => !MUSCLE_ZONE_IDS.includes(z.id));
+  const chips = [{id:"all", label:"Tout"}, ...flatZones];
+  const muscleActive = MUSCLE_ZONE_IDS.includes(state.zone);
+  const flatHTML = chips.map(z => `<button class="chip ${state.zone===z.id?'active':''}" data-zone="${z.id}">${esc(z.label)}</button>`).join("");
+  const parentLabel = muscleActive ? ZONES.find(z => z.id === state.zone)?.label : "Système musculaire";
+  const muscleParentHTML = `<button class="chip ${muscleActive?'active':''}" id="muscleGroupToggle">${esc(parentLabel)} ${state.muscleMenuOpen ? "▲" : "▼"}</button>`;
+  // Sous-puces ajoutées dans la même ligne défilante (pas de div imbriqué, qui casserait le
+  // flex/overflow-x existant) — juste après la puce parente, avec un style légèrement distinct.
+  const muscleSubHTML = state.muscleMenuOpen ? ZONES.filter(z => MUSCLE_ZONE_IDS.includes(z.id)).map(z => `<button class="chip chip-sub ${state.zone===z.id?'active':''}" data-zone="${z.id}">${esc(z.label)}</button>`).join("") : "";
+  el.innerHTML = flatHTML + muscleParentHTML + muscleSubHTML;
+  el.querySelectorAll("button[data-zone]").forEach(b => b.onclick = () => { state.zone = b.dataset.zone; state.muscleMenuOpen = false; render(); });
+  const toggle = document.getElementById("muscleGroupToggle");
+  if (toggle) toggle.onclick = () => { state.muscleMenuOpen = !state.muscleMenuOpen; render(); };
 }
 function renderDateChips(){
   const el = document.getElementById("dateChips");
@@ -2316,7 +2280,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v87 — 2026-08-22 16:43 UTC";
+const APP_BUILD = "v90 — 2026-08-22 17:16 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
@@ -2325,17 +2289,16 @@ function sourcesHTML(){
       <div class="src-item"><b>Europe PMC</b><p>Base européenne, couvre aussi des preprints et des contenus non indexés sur PubMed.</p></div>
       <div class="src-item"><b>Semantic Scholar</b><p>Moteur académique large spectre, avec une bonne couverture hors biomédical strict.</p></div>
       <div class="src-item"><b>JOSPT</b><p>Requête dédiée en complément de la recherche générale, pour mieux représenter cette revue de référence en kinésithérapie du sport.</p></div>
-      <div class="src-item"><b>Embase</b><p>Non intégrée : c'est une base payante qui nécessite un accès institutionnel. Europe PMC et Semantic Scholar couvrent une bonne partie du même terrain en accès libre.</p></div>
-      <div class="src-item"><b>Sportsmith</b><p>Récupération automatique via l'API du site, complétée par une sélection éditoriale en filet de sécurité si la récupération en direct échoue.</p></div>
-      <div class="src-item"><b>SimpliFaster</b><p>Contenu orienté performance et préparation physique, distingué dans l'onglet Performance. Sélection éditoriale, sans API publique disponible.</p></div>
+      <div class="src-item"><b>Sportsmith</b><p>Tentative de récupération automatique via l'API du site à chaque recherche — mais le site semble bloquer les accès automatisés (protection anti-robot constatée), donc ce contenu peut ne jamais apparaître concrètement. Voir "Nos limites" ci-dessous.</p></div>
       <div class="src-item"><b>Sport Perf & Science Reports (SPSR)</b><p>Interrogée automatiquement via l'API publique du site.</p></div>
       <div class="src-item"><b>Revues performance</b><p>Requête dédiée sur IJSPP, JSCR, Sports Biomechanics et Journal of Athletic Training, en complément de la recherche générale sur le sprint, la biomécanique et la préparation physique.</p></div>
+      <div class="src-item"><b>⚠️ Nos limites</b><p><b>Embase</b> n'est pas intégrée : c'est une base payante, propriété d'Elsevier, qui nécessite un accès institutionnel (abonnement université/hôpital) — inaccessible pour un projet indépendant et gratuit comme celui-ci. Europe PMC et Semantic Scholar couvrent une bonne partie du même terrain en accès libre, mais pas la totalité : certaines études indexées uniquement sur Embase peuvent nous échapper.<br><br><b>Sportsmith</b> semble bloquer les accès automatisés (protection anti-robot constatée en testant l'accès directement) — la récupération en direct est tentée à chaque recherche, mais peut échouer silencieusement et ne rien remonter. Pas de contenu de secours en remplacement : si la récupération échoue, l'onglet Performance affiche simplement moins de résultats de cette source précise, plutôt que du contenu obsolète.<br><br>Des limites honnêtes, pas cachées.</p></div>
     </div>`;
 }
 function fonctionnementHTML(){
   return `
     <div class="sources-list">
-      <div class="src-item"><b>Zones suivies</b><p>12 zones couvrent le cœur de l'application : tendon, cheville/pied, ischio-jambiers, genou, hanche, épaule, coude, poignet, rachis, neuro, neuro périphérique, cardio-respiratoire (incluant le volet vasculaire artériel/veineux). Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
+      <div class="src-item"><b>Zones suivies</b><p>Système tendineux, cheville/pied, genou, hanche, épaule, coude, poignet, rachis, SNC (système nerveux central), SNP (système nerveux périphérique), cardio-respiratoire (incluant le volet vasculaire artériel/veineux), et un groupe déplié "Système musculaire" (ischio-jambiers, gastrocnémiens/soléaire, quadriceps, fessiers, adducteurs, deltoïde). Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
       <div class="src-item"><b>Auteurs suivis</b><p>Liste entièrement personnalisable depuis Paramètres → Auteurs suivis : ajoute ou retire qui tu veux, à tout moment. Chaque auteur suivi bénéficie d'une recherche dédiée par nom, sans limite de date (ses 30 derniers articles par source, même anciens) — le reste de l'application reste limité aux 90 derniers jours.</p></div>
       <div class="src-item"><b>Onglet Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, en complément du contenu Sportsmith.</p></div>
       <div class="src-item"><b>Note sur 5 étoiles</b><p>Calculée automatiquement à partir de 3 critères : <b>le type d'étude</b> (méta-analyse et revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous), <b>la taille d'échantillon</b> quand elle est détectable dans le résumé, et <b>la revue</b> (bonus pour une publication dans une revue de référence : AJSM, BJSM, JOSPT, Sports Medicine...). Le détail du calcul est disponible sous chaque note, pour chaque article.</p></div>
