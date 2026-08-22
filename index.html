@@ -343,7 +343,7 @@ const ZONES = [
 const DEFAULT_AUTHORS = [
   { full: "François Fourchet", surname: "Fourchet" },
   { full: "Brice Picot", surname: "Picot" },
-  { full: "Massamba Mbaye", surname: "Mbaye" },
+  { full: "Massamba M'Baye", surname: "M'Baye" },
   { full: "Romain Tourillon", surname: "Tourillon" },
   { full: "Jean-Benoît Morin", surname: "Morin" },
   { full: "Jurdan Mendiguchia", surname: "Mendiguchia" },
@@ -422,6 +422,16 @@ function saveAuthors(){
 }
 let AUTHORS = loadAuthors();
 let FOLLOWED_SURNAMES = AUTHORS.map(a => a.surname);
+// Migration ponctuelle : corrige l'orthographe déjà enregistrée en local (ancien "Mbaye" sans
+// apostrophe) — sans ça, le changement du nom par défaut ne toucherait que les toutes nouvelles
+// installations, pas les auteurs déjà suivis et stockés dans le navigateur.
+(function migrateMbayeSpelling(){
+  const idx = AUTHORS.findIndex(a => normSurname(a.surname) === normSurname("Mbaye") && a.surname !== "M'Baye");
+  if (idx !== -1) {
+    AUTHORS[idx] = { full: "Massamba M'Baye", surname: "M'Baye" };
+    saveAuthors();
+  }
+})();
 
 function addAuthor(fullName){
   const full = fullName.trim();
@@ -1127,7 +1137,7 @@ async function pubmedSearchAuthor(surname, initials){
   // entièrement. Le filtre en aval (articleHasStrongAuthorMatch / inBroadDomain, voir
   // passesAuthorGate) fait déjà le tri de précision — pas besoin de restreindre à la source, et
   // une seule requête (au lieu de deux) réduit la charge sur l'API NCBI, limitée en débit.
-  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=30&sort=date&retmode=json`;
+  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=200&sort=date&retmode=json`;
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
@@ -1137,7 +1147,7 @@ async function pubmedSearchAuthor(surname, initials){
 }
 async function europePmcSearchAuthor(surname, initials){
   const q = `AUTH:"${surname}"`;
-  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=30&resultType=core&sort=P_PDATE_D%20desc`;
+  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=200&resultType=core&sort=P_PDATE_D%20desc`;
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
@@ -2256,7 +2266,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v83 — 2026-08-22 13:49 UTC";
+const APP_BUILD = "v84 — 2026-08-22 14:14 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
