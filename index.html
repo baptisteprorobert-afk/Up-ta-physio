@@ -433,7 +433,9 @@ async function activateKeywordLiveSearch(word){
     if (liveResults.length) {
       const existingIds = new Set(ARTICLES.map(a => a.id));
       const fresh = liveResults.filter(a => !existingIds.has(a.id));
-      if (fresh.length) ARTICLES = ARTICLES.concat(fresh);
+      if (fresh.length) {
+        ARTICLES = ARTICLES.concat(fresh).sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+      }
     }
   } finally {
     state.keywordSearching = false;
@@ -915,12 +917,13 @@ async function semanticScholarSearch(zone, minIso, maxIso){
 
 // ---------- Recherche dédiée par auteur suivi : PAS de borne de date, on veut leurs derniers articles quelle que soit leur ancienneté ----------
 async function pubmedSearchAuthor(surname, initials){
-  // Pas de restriction par mot-clé ici : un filtre plus fin s'applique déjà en aval
-  // (articleHasStrongAuthorMatch / inBroadDomain, voir passesAuthorGate) — le rajouter ici en
-  // plus ne fait qu'exclure de vrais articles de l'auteur suivi dès la source, avant même que ce
-  // filtre plus précis ait sa chance de les évaluer correctement.
-  const authorField = initials ? `"${surname} ${initials}"[Author]` : `${surname}[Author]`;
-  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(authorField)}&retmax=30&sort=date&retmode=json`;
+  // Recherche par nom de famille seul, sans les initiales dans la requête : PubMed indexe parfois
+  // un auteur avec PLUS d'initiales que ce qu'on a en mémoire (ex. "Rambaud AJM" alors qu'on ne
+  // connaît que "Rambaud A" à partir du prénom saisi) — une recherche par expression exacte
+  // "Rambaud A"[Author] ne matche alors JAMAIS "Rambaud AJM", et on rate l'auteur presque
+  // entièrement. Le filtre en aval (articleHasStrongAuthorMatch / inBroadDomain, voir
+  // passesAuthorGate) fait déjà le tri de précision — pas besoin de restreindre à la source.
+  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=30&sort=date&retmode=json`;
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
@@ -929,7 +932,7 @@ async function pubmedSearchAuthor(surname, initials){
   } catch(e){ return []; }
 }
 async function europePmcSearchAuthor(surname, initials){
-  const q = initials ? `AUTH:"${surname} ${initials}"` : `AUTH:"${surname}"`;
+  const q = `AUTH:"${surname}"`;
   const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=30&resultType=core&sort=P_PDATE_D%20desc`;
   try {
     const res = await fetch(url);
@@ -1802,7 +1805,13 @@ function getFilteredList(){
   }
   if (state.minRating > 0) list = list.filter(a => a.rating >= state.minRating);
   if (state.studyType !== "all") list = list.filter(a => a.studyType === state.studyType);
-  if (state.query.trim()) list = list.filter(a => matchesSearch(a, state.query));
+  if (state.query.trim()) {
+    // Un texte libre peut matcher un mot sans rapport avec le sujet réel de l'article — ex. un nom
+    // d'auteur suivi qui est aussi le nom d'un naturaliste dans une nomenclature d'espèce ("Girard,
+    // 1859"). On exige donc en plus une pertinence de domaine, sauf si l'article est déjà reconnu
+    // comme provenant d'un auteur suivi (vérification bien plus fiable qu'un simple mot du titre).
+    list = list.filter(a => matchesSearch(a, state.query) && (a.followed || BROAD_DOMAIN_REGEX.test(`${a.title} ${a.summary}`)));
+  }
   list = list.filter(a => matchesActiveKeywords(a.title, a.summary));
   return list;
 }
@@ -2028,7 +2037,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v69 — 2026-08-22 11:54 UTC";
+const APP_BUILD = "v71 — 2026-08-22 12:09 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
@@ -2265,7 +2274,9 @@ searchInput.addEventListener("input", () => {
       if (state.query.trim() === q && liveResults.length) {
         const existingIds = new Set(ARTICLES.map(a => a.id));
         const fresh = liveResults.filter(a => !existingIds.has(a.id));
-        if (fresh.length) ARTICLES = ARTICLES.concat(fresh);
+        if (fresh.length) {
+          ARTICLES = ARTICLES.concat(fresh).sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+        }
       }
     } finally {
       state.keywordSearching = false;
