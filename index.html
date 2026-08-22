@@ -2302,7 +2302,7 @@ function renderTabbar(){
 // Baptiste) — marque symboliquement la fin de la phase de construction/correction rapide et le
 // passage en phase de lancement public. Ensuite : 2.1, 2.2, 2.3... pour les mises à jour normales,
 // 3.0 réservé à une vraie refonte future.
-const APP_BUILD = "v96 — 2026-08-22 17:53 UTC";
+const APP_BUILD = "v97 — 2026-08-22 17:58 UTC";
 function sourcesHTML(){
   return `
     <div class="sources-list">
@@ -2324,7 +2324,7 @@ function fonctionnementHTML(){
     <div class="sources-list">
       <div class="src-item"><b>Zones suivies</b><p>Système tendineux, cheville/pied, genou, hanche, épaule, coude, poignet, rachis, SNC (système nerveux central), SNP (système nerveux périphérique), cardio-respiratoire (incluant le volet vasculaire artériel/veineux), et un groupe déplié "Système musculaire" (ischio-jambiers, gastrocnémiens/soléaire, quadriceps, fessiers, trapèze, biceps/triceps — liste appelée à s'élargir). Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
       <div class="src-item"><b>Auteurs suivis</b><p>Liste entièrement personnalisable depuis Paramètres → Auteurs suivis : ajoute ou retire qui tu veux, à tout moment. Chaque auteur suivi bénéficie d'une recherche dédiée par nom, sans limite de date (ses 30 derniers articles par source, même anciens) — le reste de l'application reste limité aux 90 derniers jours.</p></div>
-      <div class="src-item"><b>Onglet Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, en complément du contenu Sportsmith.</p></div>
+      <div class="src-item"><b>Onglet Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, croisant plusieurs sources spécialisées.</p></div>
       <div class="src-item"><b>Note sur 5 étoiles</b><p>Calculée automatiquement à partir de 3 critères : <b>le type d'étude</b> (méta-analyse et revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous), <b>la taille d'échantillon</b> quand elle est détectable dans le résumé, et <b>la revue</b> (bonus pour une publication dans une revue de référence : AJSM, BJSM, JOSPT, Sports Medicine...). Le détail du calcul est disponible sous chaque note, pour chaque article.</p></div>
       <div class="src-item"><b>📚 Incontournables</b><p>Les articles les plus cités sur les 3 dernières années, toutes zones confondues — recherche indépendante du pool général, croisant Europe PMC et Semantic Scholar (le plus haut chiffre des deux est retenu). Se met à jour automatiquement. Les chiffres affichés peuvent être en dessous de ceux de Google Scholar (base plus large, sans accès public disponible), sans que cela remette en cause le classement relatif entre articles.</p></div>
       <div class="src-item"><b>Garde-fous qualité</b><p>La recherche par auteur combine nom et initiales pour éviter la confusion avec un homonyme d'un autre domaine. Un filtre final n'accepte un article que s'il combine un sujet anatomique ou sportif et un véritable angle rééducation-thérapie-entraînement : un article de chirurgie ou d'épidémiologie pure est écarté même s'il mentionne un terme comme "genou" ou "sport". Les noms de comités ou groupes d'étude ne sont pas comptés comme des auteurs.</p></div>
