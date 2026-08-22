@@ -1488,8 +1488,11 @@ async function searchTermAcrossSources(q, minPm, maxPm, minIso, maxIso){
 // coïncidence, si ce nom apparaissait aussi dans un titre. Pas de terme de traduction ici, un nom
 // propre ne se traduit pas.
 async function searchAuthorAcrossSources(q, minPm, maxPm, minIso, maxIso){
-  const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${q}[Author]`)}&retmax=15&sort=relevance&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
-  const epmcUrl = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(`AUTH:"${q}"`)}&format=json&pageSize=15&resultType=core`;
+  // Tri par date plutôt que "pertinence" (critère opaque de l'API, qui peut reléguer un article
+  // sans résumé disponible hors du plafond même s'il est récent et légitime) — cohérent avec la
+  // recherche précise utilisée pour les auteurs suivis, qui elle ne pose pas ce problème.
+  const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${q}[Author]`)}&retmax=25&sort=date&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
+  const epmcUrl = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(`AUTH:"${q}"`)}&format=json&pageSize=25&resultType=core&sort=P_PDATE_D%20desc`;
   try {
     const [pmRes, epmcRes] = await Promise.all([fetch(pubmedUrl), fetch(epmcUrl)]);
     let pmArticles = [];
@@ -2025,7 +2028,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v67 — 2026-08-22 11:41 UTC";
+const APP_BUILD = "v69 — 2026-08-22 11:54 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
