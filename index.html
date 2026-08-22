@@ -516,7 +516,13 @@ const MUST_READ_CACHE_KEY = "kine-mustread-cache-v2";
 const TRENDING_THRESHOLD = 3;
 // Filet de sécurité domaine : uniquement kiné, rééducation fonctionnelle, physiothérapie, préparation physique.
 // Sujet anatomique / population sportive
-const KINE_TOPIC_REGEX = /\btendon|tendinopathy|\bmuscle|musculoskeletal|joint pain|joint injur|joint stability|knee joint|ankle joint|shoulder joint|hip joint|joint mobility|\bgait\b|postural balance|balance training|balance control|dynamic balance|static balance|neuromuscular|sports? injur|athletic injur|overuse injur|running injur|training injur|\bacl\b|hamstring|\bankle\b|\bknee\b|shoulder|rotator cuff|\bstroke\b|hemiplegia|parkinson|\bcopd\b|plantar fasciitis|dorsiflexion|patellofemoral|proprioception|\bathlete|\bsport|sprint|biomechanic|force-velocity|vertical jump|power output|locomotion|running economy|\bagility\b|change of direction|\bkinematic|\bkinetics?\b|propulsi|ground reaction force|step frequency|contact time|plyometric|isokinetic|eccentric|concentric|lower limb|running speed|maximal velocity|countermovement|resistance training|explosive strength|motor performance|physical performance|movement analysis/i;
+const KINE_TOPIC_REGEX = /\btendon|tendinopathy|\bmuscle|musculoskeletal|joint pain|joint injur|joint stability|knee joint|ankle joint|shoulder joint|hip joint|joint mobility|\bgait\b|postural balance|balance training|balance control|dynamic balance|static balance|neuromuscular|sports? injur|athletic injur|overuse injur|running injur|training injur|\bacl\b|anterior cruciate|\bcruciate\b|\bmeniscus|\bmeniscal|quadriceps|hamstring|\bankle\b|\bknee\b|shoulder|rotator cuff|scapular|impingement|\bstroke\b|hemiplegia|parkinson|\bcopd\b|chronic obstructive pulmonary|pulmonary rehabilit|cardiac rehabilit|heart failure|spinal cord injur|traumatic brain injur|multiple sclerosis|cerebral palsy|exoskeleton|plantar fasciitis|dorsiflexion|patellofemoral|proprioception|\bathlete|\bsport|sprint|biomechanic|force-velocity|vertical jump|power output|locomotion|running economy|\bagility\b|change of direction|\bkinematic|\bkinetics?\b|propulsi|ground reaction force|step frequency|contact time|plyometric|isokinetic|eccentric|concentric|lower limb|running speed|maximal velocity|countermovement|resistance training|explosive strength|motor performance|physical performance|movement analysis|\brehabilit|physiotherap|physical therap|osteoarthritis|ligament reconstruction|ligament injur|ligament rupture|ligament tear/i;
+// Vocabulaire ajouté après coup : "rehabilitation", "physiotherapy" et "anterior cruciate ligament"
+// en toutes lettres manquaient carrément, et pas seulement pour le genou — même trou vérifié et
+// comblé pour l'épaule (scapular, impingement), le neuro (AVC pédiatrique, lésion médullaire,
+// traumatisme crânien, SEP, paralysie cérébrale) et le cardio-respiratoire (insuffisance
+// cardiaque, réadaptation pulmonaire/cardiaque). Plusieurs vrais articles légitimes n'avaient
+// alors aucun terme qui matche et se faisaient exclure à tort, quelle que soit la zone concernée.
 // "kinetic"/"kinetics" exige une limite de mot avant ET après : sans ça, ça matche comme simple
 // sous-chaîne à l'intérieur de mots sans aucun rapport, comme "pharmacoKINETICs" — c'est ce qui a
 // laissé passer un article de pharmacologie pédiatrique lors d'une recherche par auteur homonyme.
@@ -968,12 +974,16 @@ async function pubmedSearchAuthor(surname, initials){
   // "Rambaud A"[Author] ne matche alors JAMAIS "Rambaud AJM", et on rate l'auteur presque
   // entièrement. Le filtre en aval (articleHasStrongAuthorMatch / inBroadDomain, voir
   // passesAuthorGate) fait déjà le tri de précision — pas besoin de restreindre à la source.
-  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=30&sort=date&retmode=json`;
+  // On interroge quand même EN PLUS la forme "nom + initiales" en parallèle : certaines de ses
+  // publications sont parfois indexées avec exactement cette forme courte, et la fusion des deux
+  // résultats couvre mieux l'ensemble que l'une ou l'autre requête seule.
+  const urls = [`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=30&sort=date&retmode=json`];
+  if (initials) urls.push(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`"${surname} ${initials}"[Author]`)}&retmax=30&sort=date&retmode=json`);
   try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data?.esearchresult?.idlist || [];
+    const results = await Promise.all(urls.map(url => fetch(url).then(r => r.ok ? r.json() : null).catch(()=>null)));
+    const ids = new Set();
+    results.forEach(data => (data?.esearchresult?.idlist || []).forEach(id => ids.add(id)));
+    return Array.from(ids);
   } catch(e){ return []; }
 }
 async function europePmcSearchAuthor(surname, initials){
@@ -2094,7 +2104,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v75 — 2026-08-22 12:33 UTC";
+const APP_BUILD = "v78 — 2026-08-22 12:45 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
