@@ -515,17 +515,169 @@ const MUST_READ_CACHE_KEY = "kine-mustread-cache-v2";
 // de l'onglet Incontournables lui-même, qui a sa propre logique dédiée ci-dessus).
 const TRENDING_THRESHOLD = 3;
 // Filet de sécurité domaine : uniquement kiné, rééducation fonctionnelle, physiothérapie, préparation physique.
-// Sujet anatomique / population sportive
-const KINE_TOPIC_REGEX = /\btendon|tendinopathy|\bmuscle|musculoskeletal|joint pain|joint injur|joint stability|knee joint|ankle joint|shoulder joint|hip joint|joint mobility|\bgait\b|postural balance|balance training|balance control|dynamic balance|static balance|neuromuscular|sports? injur|athletic injur|overuse injur|running injur|training injur|\bacl\b|anterior cruciate|\bcruciate\b|\bmeniscus|\bmeniscal|quadriceps|hamstring|\bankle\b|\bknee\b|shoulder|rotator cuff|scapular|impingement|\bstroke\b|hemiplegia|parkinson|\bcopd\b|chronic obstructive pulmonary|pulmonary rehabilit|cardiac rehabilit|heart failure|spinal cord injur|traumatic brain injur|multiple sclerosis|cerebral palsy|exoskeleton|plantar fasciitis|dorsiflexion|patellofemoral|proprioception|\bathlete|\bsport|sprint|biomechanic|force-velocity|vertical jump|power output|locomotion|running economy|\bagility\b|change of direction|\bkinematic|\bkinetics?\b|propulsi|ground reaction force|step frequency|contact time|plyometric|isokinetic|eccentric|concentric|lower limb|running speed|maximal velocity|countermovement|resistance training|explosive strength|motor performance|physical performance|movement analysis|\brehabilit|physiotherap|physical therap|osteoarthritis|ligament reconstruction|ligament injur|ligament rupture|ligament tear/i;
-// Vocabulaire ajouté après coup : "rehabilitation", "physiotherapy" et "anterior cruciate ligament"
-// en toutes lettres manquaient carrément, et pas seulement pour le genou — même trou vérifié et
-// comblé pour l'épaule (scapular, impingement), le neuro (AVC pédiatrique, lésion médullaire,
-// traumatisme crânien, SEP, paralysie cérébrale) et le cardio-respiratoire (insuffisance
-// cardiaque, réadaptation pulmonaire/cardiaque). Plusieurs vrais articles légitimes n'avaient
-// alors aucun terme qui matche et se faisaient exclure à tort, quelle que soit la zone concernée.
-// "kinetic"/"kinetics" exige une limite de mot avant ET après : sans ça, ça matche comme simple
-// sous-chaîne à l'intérieur de mots sans aucun rapport, comme "pharmacoKINETICs" — c'est ce qui a
-// laissé passer un article de pharmacologie pédiatrique lors d'une recherche par auteur homonyme.
+// Reconstruit par catégorie (audit méthodique plutôt qu'ajout au coup par coup) pour rester
+// lisible et vérifiable terme par terme. Chaque terme court à risque de collision (ex. "kinetic")
+// est encadré de limites de mot (\b) pour éviter les faux positifs de sous-chaîne.
+const KINE_TOPIC_TERMS = [
+  // ---- Kiné / rééducation générale ----
+  "\\brehabilit",
+  "physiotherap",
+  "physical therap",
+  "\\bmanual therap",
+  "therapeutic exercise",
+  "exercise therapy",
+  "myofascial",
+  "trigger point",
+  "spinal manipulation",
+  "joint manipulation",
+  "\\brange of motion\\b",
+  "\\brom\\b",
+  "functional recovery",
+  "motor recovery",
+  // ---- Genou / LCA ----
+  "\\bacl\\b",
+  "\\baclr\\b",
+  "anterior cruciate",
+  "\\bcruciate\\b",
+  "\\bmeniscus",
+  "\\bmeniscal",
+  "quadriceps",
+  "patellofemoral",
+  "\\bknee\\b",
+  "knee joint",
+  "patellar",
+  "\\bpcl\\b",
+  "posterior cruciate",
+  // ---- Cheville / pied ----
+  "\\bankle\\b",
+  "ankle joint",
+  "plantar fasciitis",
+  "dorsiflexion",
+  "plantarflexion",
+  "chronic ankle instability",
+  "ankle sprain",
+  "\\bhallux",
+  "metatarsalgia",
+  "achilles tendon",
+  // ---- Hanche ----
+  "hip joint",
+  "\\bhip\\b",
+  "femoroacetabular",
+  "hip labra",
+  "hip osteoarthritis",
+  // ---- Ischio-jambiers / cuisse ----
+  "hamstring",
+  "iliotibial band",
+  "\\bitb\\b",
+  // ---- Épaule ----
+  "shoulder",
+  "shoulder joint",
+  "rotator cuff",
+  "scapular",
+  "impingement",
+  "glenohumeral",
+  "adhesive capsulitis",
+  "frozen shoulder",
+  "slap lesion",
+  // ---- Tendon ----
+  "\\btendon",
+  "tendinopathy",
+  "tendinitis",
+  "tendinosis",
+  // ---- Rachis / lombaire ----
+  "low back pain",
+  "\\blumbar\\b",
+  "sciatica",
+  "\\bwhiplash\\b",
+  // ---- Neuro ----
+  "\\bstroke\\b",
+  "hemiplegia",
+  "hemiparesis",
+  "parkinson",
+  "multiple sclerosis",
+  "cerebral palsy",
+  "spinal cord injur",
+  "traumatic brain injur",
+  "exoskeleton",
+  "vestibular rehabilit",
+  "neurorehabilit",
+  "\\bataxia\\b",
+  // ---- Cardio-respiratoire ----
+  "\\bcopd\\b",
+  "chronic obstructive pulmonary",
+  "pulmonary rehabilit",
+  "cardiac rehabilit",
+  "heart failure",
+  "\\bdyspnea\\b",
+  "exercise capacity",
+  "\\bvo2\\s?max\\b",
+  // ---- Musculosquelettique général ----
+  "\\bmuscle",
+  "musculoskeletal",
+  "joint pain",
+  "joint injur",
+  "joint stability",
+  "joint mobility",
+  "osteoarthritis",
+  "ligament reconstruction",
+  "ligament injur",
+  "ligament rupture",
+  "ligament tear",
+  "stress fracture",
+  // ---- Équilibre / marche ----
+  "\\bgait\\b",
+  "postural balance",
+  "balance training",
+  "balance control",
+  "dynamic balance",
+  "static balance",
+  "proprioception",
+  "neuromuscular",
+  "fall prevention",
+  // ---- Sport / performance ----
+  "\\bathlete",
+  "\\bsport",
+  "sprint",
+  "biomechanic",
+  "force-velocity",
+  "vertical jump",
+  "power output",
+  "locomotion",
+  "running economy",
+  "\\bagility\\b",
+  "change of direction",
+  "\\bkinematic",
+  "\\bkinetics?\\b",
+  "propulsi",
+  "ground reaction force",
+  "step frequency",
+  "contact time",
+  "plyometric",
+  "isokinetic",
+  "eccentric",
+  "concentric",
+  "lower limb",
+  "running speed",
+  "maximal velocity",
+  "countermovement",
+  "resistance training",
+  "explosive strength",
+  "motor performance",
+  "physical performance",
+  "movement analysis",
+  "return to running",
+  "return to play",
+  "reinjur",
+  "re-injur",
+  "hop test",
+  "sports? injur",
+  "athletic injur",
+  "overuse injur",
+  "running injur",
+  "training injur",
+  "\\bconcussion\\b",
+];
+const KINE_TOPIC_REGEX = new RegExp(KINE_TOPIC_TERMS.join("|"), "i");
 // Angle rééducation / thérapie / entraînement (ce qui distingue un vrai article kiné d'un article de chirurgie ou d'épidémiologie pure)
 const KINE_ANGLE_REGEX = /physiotherap|physical therap|kinesiotherap|rehabilit|exercise therap|\bexercise\b|\btraining\b|conditioning|\btherapy\b|therapeutic|prevention program|return to (sport|play)|motor control|strength and conditioning|physiotherapist|physical therapist|manual therapy|movement pattern/i;
 const KINE_DOMAIN_REGEX = { test: (text) => KINE_TOPIC_REGEX.test(text) && KINE_ANGLE_REGEX.test(text) };
@@ -2104,7 +2256,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v78 — 2026-08-22 12:45 UTC";
+const APP_BUILD = "v81 — 2026-08-22 13:10 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
