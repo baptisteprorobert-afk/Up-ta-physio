@@ -516,7 +516,10 @@ const MUST_READ_CACHE_KEY = "kine-mustread-cache-v2";
 const TRENDING_THRESHOLD = 3;
 // Filet de sécurité domaine : uniquement kiné, rééducation fonctionnelle, physiothérapie, préparation physique.
 // Sujet anatomique / population sportive
-const KINE_TOPIC_REGEX = /\btendon|tendinopathy|\bmuscle|musculoskeletal|joint pain|joint injur|joint stability|knee joint|ankle joint|shoulder joint|hip joint|joint mobility|\bgait\b|postural balance|balance training|balance control|dynamic balance|static balance|neuromuscular|sports? injur|athletic injur|overuse injur|running injur|training injur|\bacl\b|hamstring|\bankle\b|\bknee\b|shoulder|rotator cuff|\bstroke\b|hemiplegia|parkinson|\bcopd\b|plantar fasciitis|dorsiflexion|patellofemoral|proprioception|\bathlete|\bsport|sprint|biomechanic|force-velocity|vertical jump|power output|locomotion|running economy|\bagility\b|change of direction|kinematic|kinetic|propulsi|ground reaction force|step frequency|contact time|plyometric|isokinetic|eccentric|concentric|lower limb|running speed|maximal velocity|countermovement|resistance training|explosive strength|motor performance|physical performance|movement analysis/i;
+const KINE_TOPIC_REGEX = /\btendon|tendinopathy|\bmuscle|musculoskeletal|joint pain|joint injur|joint stability|knee joint|ankle joint|shoulder joint|hip joint|joint mobility|\bgait\b|postural balance|balance training|balance control|dynamic balance|static balance|neuromuscular|sports? injur|athletic injur|overuse injur|running injur|training injur|\bacl\b|hamstring|\bankle\b|\bknee\b|shoulder|rotator cuff|\bstroke\b|hemiplegia|parkinson|\bcopd\b|plantar fasciitis|dorsiflexion|patellofemoral|proprioception|\bathlete|\bsport|sprint|biomechanic|force-velocity|vertical jump|power output|locomotion|running economy|\bagility\b|change of direction|\bkinematic|\bkinetics?\b|propulsi|ground reaction force|step frequency|contact time|plyometric|isokinetic|eccentric|concentric|lower limb|running speed|maximal velocity|countermovement|resistance training|explosive strength|motor performance|physical performance|movement analysis/i;
+// "kinetic"/"kinetics" exige une limite de mot avant ET après : sans ça, ça matche comme simple
+// sous-chaîne à l'intérieur de mots sans aucun rapport, comme "pharmacoKINETICs" — c'est ce qui a
+// laissé passer un article de pharmacologie pédiatrique lors d'une recherche par auteur homonyme.
 // Angle rééducation / thérapie / entraînement (ce qui distingue un vrai article kiné d'un article de chirurgie ou d'épidémiologie pure)
 const KINE_ANGLE_REGEX = /physiotherap|physical therap|kinesiotherap|rehabilit|exercise therap|\bexercise\b|\btraining\b|conditioning|\btherapy\b|therapeutic|prevention program|return to (sport|play)|motor control|strength and conditioning|physiotherapist|physical therapist|manual therapy|movement pattern/i;
 const KINE_DOMAIN_REGEX = { test: (text) => KINE_TOPIC_REGEX.test(text) && KINE_ANGLE_REGEX.test(text) };
@@ -2091,7 +2094,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v74 — 2026-08-22 12:27 UTC";
+const APP_BUILD = "v75 — 2026-08-22 12:33 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
