@@ -1806,11 +1806,13 @@ function getFilteredList(){
   if (state.minRating > 0) list = list.filter(a => a.rating >= state.minRating);
   if (state.studyType !== "all") list = list.filter(a => a.studyType === state.studyType);
   if (state.query.trim()) {
-    // Un texte libre peut matcher un mot sans rapport avec le sujet réel de l'article — ex. un nom
-    // d'auteur suivi qui est aussi le nom d'un naturaliste dans une nomenclature d'espèce ("Girard,
-    // 1859"). On exige donc en plus une pertinence de domaine, sauf si l'article est déjà reconnu
-    // comme provenant d'un auteur suivi (vérification bien plus fiable qu'un simple mot du titre).
-    list = list.filter(a => matchesSearch(a, state.query) && (a.followed || BROAD_DOMAIN_REGEX.test(`${a.title} ${a.summary}`)));
+    // Un texte libre peut matcher un mot sans rapport avec le sujet réel de l'article — ex. un
+    // nom d'auteur suivi qui est aussi le nom d'un tout autre chercheur (homonyme, initiale
+    // identique mais personne différente), ou d'un naturaliste dans une nomenclature d'espèce
+    // ("Girard, 1859"). On exige donc systématiquement une pertinence de domaine ici — pas
+    // d'exception sur une simple correspondance de nom, trop peu fiable pour distinguer deux
+    // personnes différentes sans identifiant unique (ORCID) qu'on n'a pas.
+    list = list.filter(a => matchesSearch(a, state.query) && BROAD_DOMAIN_REGEX.test(`${a.title} ${a.summary}`));
   }
   list = list.filter(a => matchesActiveKeywords(a.title, a.summary));
   return list;
@@ -2037,7 +2039,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v71 — 2026-08-22 12:09 UTC";
+const APP_BUILD = "v72 — 2026-08-22 12:16 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
