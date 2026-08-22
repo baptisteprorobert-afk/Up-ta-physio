@@ -386,7 +386,11 @@ function splitFullName(name){
   const initials = parts.slice(0,-1).join(" ").split(/[\s-]+/).filter(Boolean).map(p=>p[0]||"").join("").toUpperCase();
   return { surname, initials };
 }
-function normSurname(s){ return normText(s || "").replace(/[\-\s]/g, ""); }
+function normSurname(s){ return normText(s || "").replace(/\u2019/g, "'").replace(/[\-\s]/g, ""); }
+// L'apostrophe elle-même n'est plus retirée (voir plus haut : "M'Baye" ≠ "Mbaye", deux noms
+// potentiellement différents) — mais ses variantes clavier (droite ' vs courbe ’, que le clavier
+// iOS substitue automatiquement en tapant) sont ramenées à une seule forme avant comparaison, pour
+// que "M'Baye" et "M'baye" restent bien reconnus comme le même nom.
 // L'apostrophe n'est plus retirée volontairement (contrairement à avant) : "M'Baye" et "Mbaye"
 // peuvent être deux familles différentes, pas juste une variante d'écriture du même nom — traiter
 // ça comme identique avait déjà fait remonter un article sans rapport, attribué par erreur à tort
@@ -1812,11 +1816,15 @@ async function loadArticles(force){
       results.forEach(a => byId.set(a.id, a));
       const pruneCutoff = Date.now() - PRUNE_DAYS * 86400000;
       const combined = Array.from(byId.values())
-        // Les articles d'auteurs suivis échappent à l'élagage : leur recherche dédiée n'a
-        // volontairement aucune borne de date (voir pubmedSearchAuthor), donc l'élagage général
-        // les faisait ressortir aussitôt récupérés, ce qui n'a pas de sens pour un suivi d'auteur.
-        // Recalculé ici (pas juste a.followed en cache) pour rester correct si la liste d'auteurs
-        // suivis a changé depuis que l'article a été récupéré la première fois.
+        // Les articles d'auteurs suivis échappent à l'élagage par ancienneté : leur recherche
+        // dédiée n'a volontairement aucune borne de date (voir pubmedSearchAuthor), donc l'élagage
+        // général les faisait ressortir aussitôt récupérés, ce qui n'a pas de sens pour un suivi
+        // d'auteur. Recalculé ici (pas juste a.followed en cache) pour rester correct si la liste
+        // d'auteurs suivis a changé depuis que l'article a été récupéré la première fois.
+        // MAIS l'exemption d'ancienneté ne dispense jamais de la pertinence de domaine : sans ça,
+        // un article resté dans le pool avant un correctif du filtre (nom de famille courant,
+        // homonyme hors-sujet) y restait pour toujours, jamais réévalué aux règles à jour.
+        .filter(a => BROAD_DOMAIN_REGEX.test(`${a.title} ${a.summary}`))
         .filter(a => AUTHORS.some(au => articleMatchesAuthor(a, au)) || !a.publishedAt || new Date(a.publishedAt).getTime() >= pruneCutoff)
         .sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
       ARTICLES = combined.filter(a => !DISMISSED.includes(a.id));
@@ -2280,7 +2288,11 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v93 — 2026-08-22 17:27 UTC";
+// À la prochaine version après v99, passer à "2.0" plutôt que "v100" (décision prise avec
+// Baptiste) — marque symboliquement la fin de la phase de construction/correction rapide et le
+// passage en phase de lancement public. Ensuite : 2.1, 2.2, 2.3... pour les mises à jour normales,
+// 3.0 réservé à une vraie refonte future.
+const APP_BUILD = "v95 — 2026-08-22 17:35 UTC";
 function sourcesHTML(){
   return `
     <div class="sources-list">
