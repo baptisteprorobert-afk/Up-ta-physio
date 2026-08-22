@@ -915,9 +915,12 @@ async function semanticScholarSearch(zone, minIso, maxIso){
 
 // ---------- Recherche dédiée par auteur suivi : PAS de borne de date, on veut leurs derniers articles quelle que soit leur ancienneté ----------
 async function pubmedSearchAuthor(surname, initials){
+  // Pas de restriction par mot-clé ici : un filtre plus fin s'applique déjà en aval
+  // (articleHasStrongAuthorMatch / inBroadDomain, voir passesAuthorGate) — le rajouter ici en
+  // plus ne fait qu'exclure de vrais articles de l'auteur suivi dès la source, avant même que ce
+  // filtre plus précis ait sa chance de les évaluer correctement.
   const authorField = initials ? `"${surname} ${initials}"[Author]` : `${surname}[Author]`;
-  const term = `${authorField} AND (sport[Title/Abstract] OR athlete[Title/Abstract] OR physiotherapy[Title/Abstract] OR "physical therapy"[Title/Abstract] OR rehabilitation[Title/Abstract] OR tendon[Title/Abstract] OR ACL[Title/Abstract] OR hamstring[Title/Abstract] OR ankle[Title/Abstract] OR foot[Title/Abstract] OR dorsiflexion[Title/Abstract])`;
-  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(term)}&retmax=15&sort=date&retmode=json`;
+  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(authorField)}&retmax=30&sort=date&retmode=json`;
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
@@ -927,7 +930,7 @@ async function pubmedSearchAuthor(surname, initials){
 }
 async function europePmcSearchAuthor(surname, initials){
   const q = initials ? `AUTH:"${surname} ${initials}"` : `AUTH:"${surname}"`;
-  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=15&resultType=core&sort=P_PDATE_D%20desc`;
+  const url = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&pageSize=30&resultType=core&sort=P_PDATE_D%20desc`;
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
@@ -1446,11 +1449,47 @@ const KEYWORD_SEARCH_CACHE = {};
 // trouver — sans ça, un mot-clé français retrouverait les bons articles puis les recracherait
 // aussitôt du filtre, faute de correspondance textuelle directe.
 const KEYWORD_TRANSLATIONS = {};
+// Recherche titre/résumé — ne trouve un auteur que par coïncidence si son nom apparaît aussi
+// dans un titre. Complétée juste en dessous par une vraie recherche sur le champ Auteur.
 async function searchTermAcrossSources(q, minPm, maxPm, minIso, maxIso){
   const pubmedTerm = `(${q}[Title/Abstract])`;
   const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(pubmedTerm)}&retmax=20&sort=relevance&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
   const epmcQ = `"${q}" AND FIRST_PDATE:[${minIso} TO ${maxIso}]`;
   const epmcUrl = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(epmcQ)}&format=json&pageSize=20&resultType=core`;
+  try {
+    const [pmRes, epmcRes] = await Promise.all([fetch(pubmedUrl), fetch(epmcUrl)]);
+    let pmArticles = [];
+    if (pmRes.ok) {
+      const pmData = await pmRes.json();
+      const pmIds = pmData?.esearchresult?.idlist || [];
+      if (pmIds.length) {
+        const zoneMapLocal = {}; pmIds.forEach(id => zoneMapLocal[id] = []);
+        pmArticles = await pubmedFetchAll(pmIds, zoneMapLocal);
+      }
+    }
+    let epmcArticles = [];
+    if (epmcRes.ok) {
+      const epmcData = await epmcRes.json();
+      epmcArticles = (epmcData?.resultList?.result || []).map(r => {
+        const journal = r.journalTitle || r.journalInfo?.journal?.title || r.source || "Europe PMC";
+        const publishedAt = r.firstPublicationDate || (r.pubYear ? `${r.pubYear}-01-01` : null);
+        const authorPairs = cleanAuthorPairs((r.authorList?.author || []).map(a=>({ surname: a.lastName || "", initials: a.initials || "" })));
+        return { pmid: r.pmid || null, title: r.title || "Sans titre", source: journal,
+          date: r.firstPublicationDate || r.pubYear || "date inconnue", publishedAt,
+          summary: cleanAbstractText(r.abstractText||"").slice(0,1500), fullAbstract: cleanAbstractText(r.abstractText||"").slice(0,1800), abstractSections: [], authors: authorPairs.map(p=>p.surname).slice(0,3), authorInits: authorPairs.map(p=>p.initials).slice(0,3), doi: r.doi || null, citationCount: r.citedByCount || 0,
+          zones: [], url: r.doi ? `https://doi.org/${r.doi}` : `https://europepmc.org/article/${r.source}/${r.id}` };
+      });
+    }
+    return [...pmArticles, ...epmcArticles];
+  } catch(e){ return []; }
+}
+// Recherche dédiée sur le champ Auteur (PubMed [Author] / Europe PMC AUTH:) — c'est ce qui
+// manquait : taper un nom d'auteur dans la barre de recherche ne le trouvait auparavant que par
+// coïncidence, si ce nom apparaissait aussi dans un titre. Pas de terme de traduction ici, un nom
+// propre ne se traduit pas.
+async function searchAuthorAcrossSources(q, minPm, maxPm, minIso, maxIso){
+  const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${q}[Author]`)}&retmax=15&sort=relevance&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
+  const epmcUrl = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(`AUTH:"${q}"`)}&format=json&pageSize=15&resultType=core`;
   try {
     const [pmRes, epmcRes] = await Promise.all([fetch(pubmedUrl), fetch(epmcUrl)]);
     let pmArticles = [];
@@ -1494,7 +1533,10 @@ async function liveKeywordSearch(term){
   KEYWORD_TRANSLATIONS[normText(q)] = translated;
   const terms = normText(translated) !== normText(q) ? [q, translated] : [q];
   try {
-    const resultSets = await Promise.all(terms.map(t => searchTermAcrossSources(t, minPm, maxPm, minIso, maxIso)));
+    const resultSets = await Promise.all([
+      ...terms.map(t => searchTermAcrossSources(t, minPm, maxPm, minIso, maxIso)),
+      searchAuthorAcrossSources(q, minPm, maxPm, minIso, maxIso),
+    ]);
     let combined = [];
     resultSets.forEach(r => { combined = combined.concat(r); });
     const results = dedupe(combined)
@@ -1983,7 +2025,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v65 — 2026-08-21 23:21 UTC";
+const APP_BUILD = "v67 — 2026-08-22 11:41 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
@@ -2003,7 +2045,7 @@ function fonctionnementHTML(){
   return `
     <div class="sources-list">
       <div class="src-item"><b>Zones suivies</b><p>8 zones couvrent le cœur de l'application : tendon, cheville, pied, ischio-jambiers, genou, épaule, neuro, cardio-respiratoire. Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
-      <div class="src-item"><b>Auteurs suivis</b><p>Liste entièrement personnalisable depuis Paramètres → Auteurs suivis : ajoute ou retire qui tu veux, à tout moment. Chaque auteur suivi bénéficie d'une recherche dédiée par nom, sans limite de date (ses 15 derniers articles, même anciens) — le reste de l'application reste limité aux 90 derniers jours.</p></div>
+      <div class="src-item"><b>Auteurs suivis</b><p>Liste entièrement personnalisable depuis Paramètres → Auteurs suivis : ajoute ou retire qui tu veux, à tout moment. Chaque auteur suivi bénéficie d'une recherche dédiée par nom, sans limite de date (ses 30 derniers articles par source, même anciens) — le reste de l'application reste limité aux 90 derniers jours.</p></div>
       <div class="src-item"><b>Onglet Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, en complément du contenu Sportsmith.</p></div>
       <div class="src-item"><b>Note sur 5 étoiles</b><p>Calculée automatiquement à partir de 3 critères : <b>le type d'étude</b> (méta-analyse et revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous), <b>la taille d'échantillon</b> quand elle est détectable dans le résumé, et <b>la revue</b> (bonus pour une publication dans une revue de référence : AJSM, BJSM, JOSPT, Sports Medicine...). Le détail du calcul est disponible sous chaque note, pour chaque article.</p></div>
       <div class="src-item"><b>📚 Incontournables</b><p>Les articles les plus cités sur les 3 dernières années, toutes zones confondues — recherche indépendante du pool général, croisant Europe PMC et Semantic Scholar (le plus haut chiffre des deux est retenu). Se met à jour automatiquement. Les chiffres affichés peuvent être en dessous de ceux de Google Scholar (base plus large, sans accès public disponible), sans que cela remette en cause le classement relatif entre articles.</p></div>
