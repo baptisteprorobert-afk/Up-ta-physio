@@ -1711,7 +1711,19 @@ function finalizeArticle(a){
   const summary = a.summary ? a.summary.slice(0,280) + (a.summary.length>280?"…":"") : "Résumé non disponible.";
   const zones = a.zones && a.zones.length ? a.zones : inferZones(a.title, a.summary);
   const citationTrending = (a.citationCount||0) >= TRENDING_THRESHOLD;
-  return { id: a.doi || a.pmid || normTitle(a.title), ...a, zones, summary, rating, avis, studyType, studyTypeLabel, trending: citationTrending, citationTrending, followed: AUTHORS.some(au => articleMatchesAuthor(a, au)) };
+  // Une revue peut assigner une date de parution "officielle" dans le futur (numéro à venir) à un
+  // article déjà disponible en ligne — la date électronique réelle n'est pas toujours fournie de
+  // façon fiable par toutes les sources. Un article ne peut, par définition, jamais avoir été
+  // publié dans le futur : on plafonne donc l'affichage à aujourd'hui plutôt que de montrer une
+  // date impossible, ici, au point de passage commun à toutes les sources (PubMed, Europe PMC,
+  // Semantic Scholar...).
+  let date = a.date, publishedAt = a.publishedAt;
+  if (publishedAt && new Date(publishedAt).getTime() > Date.now()) {
+    const todayIso = isoDate(new Date());
+    date = todayIso;
+    publishedAt = todayIso;
+  }
+  return { id: a.doi || a.pmid || normTitle(a.title), ...a, date, publishedAt, zones, summary, rating, avis, studyType, studyTypeLabel, trending: citationTrending, citationTrending, followed: AUTHORS.some(au => articleMatchesAuthor(a, au)) };
 }
 
 // ---------- Recherche live par mot-clé libre (déclenchée depuis la barre de recherche) ----------
