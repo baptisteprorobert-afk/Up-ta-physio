@@ -511,7 +511,8 @@ async function activateKeywordLiveSearch(word){
       const existingIds = new Set(ARTICLES.map(a => a.id));
       const fresh = liveResults.filter(a => !existingIds.has(a.id));
       if (fresh.length) {
-        ARTICLES = ARTICLES.concat(fresh).sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+        recordFirstSeen(fresh, existingIds);
+        ARTICLES = ARTICLES.concat(fresh).sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt));
       }
     }
   } finally {
@@ -750,15 +751,49 @@ const WINDOW_DAYS = 90;
 const PRUNE_DAYS = 120; // au-delà, un article sort du pool même s'il avait déjà été vu
 const RETMAX = 12;
 const CACHE_KEY = "kine-sport-cache-v1";
-// Repère ce qui est arrivé depuis ta dernière visite : on lit l'horodatage de la fois précédente
-// AVANT de le réécrire avec l'instant présent, pour que la comparaison porte sur la session d'avant.
-const LAST_SEEN_KEY = "kine-last-seen-v1";
-let PREVIOUS_VISIT_AT = null;
-try { PREVIOUS_VISIT_AT = localStorage.getItem(LAST_SEEN_KEY); } catch(e){}
-try { localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString()); } catch(e){}
-function isNewSincePreviousVisit(publishedAt){
-  if (!PREVIOUS_VISIT_AT || !publishedAt) return false;
-  return new Date(publishedAt).getTime() > new Date(PREVIOUS_VISIT_AT).getTime();
+// Le badge "Nouveau" doit disparaître soit après 24h, soit au clic sur l'article précis — jamais
+// le clic comme unique porte de sortie. Basé sur le moment où l'app a DÉCOUVERT l'article dans le
+// pool (pas sa date de publication) : un article ancien qui remonte pour la première fois lors
+// d'une actualisation (nouvel auteur suivi, nouveau mot-clé...) doit pouvoir être marqué "Nouveau".
+const SEEN_KEY = "kine-seen-articles-v1";
+let SEEN_IDS = new Set();
+try { SEEN_IDS = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); } catch(e){}
+function markSeen(id){
+  if (!id || SEEN_IDS.has(id)) return;
+  SEEN_IDS.add(id);
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...SEEN_IDS])); } catch(e){}
+}
+const FIRST_SEEN_POOL_KEY = "kine-first-seen-pool-v1";
+const NEW_BADGE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
+let FIRST_SEEN_POOL = {};
+try { FIRST_SEEN_POOL = JSON.parse(localStorage.getItem(FIRST_SEEN_POOL_KEY) || "{}"); } catch(e){}
+// Purge ce qui a de toute façon dépassé la fenêtre, pour ne pas grossir indéfiniment le stockage.
+(function pruneFirstSeenPool(){
+  const cutoff = Date.now() - NEW_BADGE_WINDOW_MS;
+  let changed = false;
+  for (const id in FIRST_SEEN_POOL) { if (FIRST_SEEN_POOL[id] < cutoff) { delete FIRST_SEEN_POOL[id]; changed = true; } }
+  if (changed) { try { localStorage.setItem(FIRST_SEEN_POOL_KEY, JSON.stringify(FIRST_SEEN_POOL)); } catch(e){} }
+})();
+// À appeler avec la liste des identifiants déjà présents dans ARTICLES AVANT une fusion : tout
+// identifiant du nouveau lot qui n'y figurait pas encore est enregistré comme découvert maintenant.
+function recordFirstSeen(newArticles, previousIds){
+  let changed = false;
+  newArticles.forEach(a => {
+    if (!previousIds.has(a.id) && !FIRST_SEEN_POOL[a.id]) { FIRST_SEEN_POOL[a.id] = Date.now(); changed = true; }
+  });
+  if (changed) { try { localStorage.setItem(FIRST_SEEN_POOL_KEY, JSON.stringify(FIRST_SEEN_POOL)); } catch(e){} }
+}
+// Un article publié il y a des années ne doit pas devenir "Nouveau" simplement parce qu'il entre
+// dans le pool pour la première fois (nouvel auteur suivi, nouvelle zone...) — sans cette borne,
+// ce genre de cas ferait n'importe quoi visuellement. Condition d'éligibilité en plus, les critères
+// de disparition (24h depuis la découverte, ou clic) restent inchangés une fois le badge éligible.
+const NEW_BADGE_MAX_PUBLISHED_AGE_MS = 3 * 24 * 60 * 60 * 1000; // 3 jours
+function isNewSincePreviousVisit(publishedAt, id){
+  if (!id || SEEN_IDS.has(id)) return false;
+  if (!publishedAt || (Date.now() - new Date(publishedAt).getTime()) > NEW_BADGE_MAX_PUBLISHED_AGE_MS) return false;
+  const firstSeenAt = FIRST_SEEN_POOL[id];
+  if (!firstSeenAt) return false;
+  return (Date.now() - firstSeenAt) <= NEW_BADGE_WINDOW_MS;
 }
 const CACHE_MAX_AGE = 24 * 60 * 60 * 1000; // 24h
 
@@ -803,6 +838,16 @@ function dismissArticle(id){
 
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function isoDate(d){ return d.toISOString().slice(0,10); }
+// Pour le TRI uniquement (jamais pour l'affichage) : une revue peut assigner une date de parution
+// "officielle" dans le futur à un article déjà disponible en ligne (numéro à venir, pratique
+// courante en édition scientifique) — sans ce plafond, il saute artificiellement en tête de liste,
+// devant du contenu réellement plus récent. La date affichée sur la carte reste inchangée, honnête.
+function sortableTime(publishedAt){
+  if (!publishedAt) return 0;
+  const t = new Date(publishedAt).getTime();
+  const now = Date.now();
+  return t > now ? now : t;
+}
 function pubmedDate(d){ return isoDate(d).replace(/-/g,"/"); }
 function delay(ms){ return new Promise(r => setTimeout(r, ms)); }
 function normTitle(t){ return (t||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim(); }
@@ -1058,7 +1103,8 @@ function parsePubmedXml(xmlText, zoneMap){
     }
 
     let dateLabel = "date inconnue";
-    if (pdYear && pdMonth && pdDay) dateLabel = `${pdYear}-${String(pubmedMonthToNum(pdMonth)||1).padStart(2,"0")}-${String(pdDay).padStart(2,"0")}`;
+    if (adYear && adMonth && adDay) dateLabel = `${adYear}-${String(pubmedMonthToNum(adMonth)||1).padStart(2,"0")}-${String(adDay).padStart(2,"0")}`;
+    else if (pdYear && pdMonth && pdDay) dateLabel = `${pdYear}-${String(pubmedMonthToNum(pdMonth)||1).padStart(2,"0")}-${String(pdDay).padStart(2,"0")}`;
     else if (pdYear && pdMonth) dateLabel = `${pdYear}-${String(pubmedMonthToNum(pdMonth)||1).padStart(2,"0")}`;
     else if (pdYear) dateLabel = pdYear;
     else if (medlineDate) dateLabel = medlineDate;
@@ -1143,7 +1189,7 @@ async function pubmedSearchAuthor(surname, initials){
   // entièrement. Le filtre en aval (inBroadDomain, voir passesAuthorGate) fait déjà le tri de
   // précision — pas besoin de restreindre à la source, et une seule requête (au lieu de deux)
   // réduit la charge sur l'API NCBI, limitée en débit.
-  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${surname}[Author]`)}&retmax=200&sort=date&retmode=json`;
+  const url = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`"${surname}"[Author]`)}&retmax=200&sort=date&retmode=json`;
   try {
     const res = await fetch(url);
     if (!res.ok) return [];
@@ -1321,7 +1367,7 @@ async function loadPodcasts(force){
     } catch(e){}
   }
   const results = await Promise.all(PODCASTS.map(fetchPodcastEpisodes));
-  const episodes = results.flatMap(r => r.episodes).sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+  const episodes = results.flatMap(r => r.episodes).sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt));
   const shows = results.map(r => r.meta).filter(m => m);
   if (episodes.length) {
     PODCAST_EPISODES = episodes;
@@ -1654,7 +1700,7 @@ async function runLiveSearch(){
 
   let merged = dedupe(filteredPool);
   merged = merged.map(finalizeArticle);
-  merged.sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+  merged.sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt));
   return merged;
 }
 
@@ -1721,7 +1767,7 @@ async function searchAuthorAcrossSources(q, minPm, maxPm, minIso, maxIso){
   // Tri par date plutôt que "pertinence" (critère opaque de l'API, qui peut reléguer un article
   // sans résumé disponible hors du plafond même s'il est récent et légitime) — cohérent avec la
   // recherche précise utilisée pour les auteurs suivis, qui elle ne pose pas ce problème.
-  const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`${q}[Author]`)}&retmax=25&sort=date&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
+  const pubmedUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(`"${q}"[Author]`)}&retmax=25&sort=date&datetype=pdat&mindate=${minPm}&maxdate=${maxPm}&retmode=json`;
   const epmcUrl = `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(`AUTH:"${q}"`)}&format=json&pageSize=25&resultType=core&sort=P_PDATE_D%20desc`;
   try {
     const [pmRes, epmcRes] = await Promise.all([fetch(pubmedUrl), fetch(epmcUrl)]);
@@ -1797,7 +1843,7 @@ async function loadArticles(force){
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        ARTICLES = parsed.articles.filter(a => !DISMISSED.includes(a.id)).sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+        ARTICLES = parsed.articles.filter(a => !DISMISSED.includes(a.id)).sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt));
         state.fetchedAt = parsed.fetchedAt;
         state.live = true;
         render();
@@ -1814,8 +1860,10 @@ async function loadArticles(force){
       // plus partie du "top N le plus récent" de sa zone. On garde ce qui a déjà été vu, on met à
       // jour les articles déjà connus (note, badges...), et on élague ce qui devient trop vieux
       // pour ne pas grossir indéfiniment.
+      const previousIds = new Set(ARTICLES.map(a => a.id));
       const byId = new Map(ARTICLES.map(a => [a.id, a]));
       results.forEach(a => byId.set(a.id, a));
+      recordFirstSeen(results, previousIds);
       const pruneCutoff = Date.now() - PRUNE_DAYS * 86400000;
       const combined = Array.from(byId.values())
         // Les articles d'auteurs suivis échappent à l'élagage par ancienneté : leur recherche
@@ -1828,7 +1876,7 @@ async function loadArticles(force){
         // homonyme hors-sujet) y restait pour toujours, jamais réévalué aux règles à jour.
         .filter(a => BROAD_DOMAIN_REGEX.test(`${a.title} ${a.summary}`))
         .filter(a => AUTHORS.some(au => articleMatchesAuthor(a, au)) || !a.publishedAt || new Date(a.publishedAt).getTime() >= pruneCutoff)
-        .sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+        .sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt));
       ARTICLES = combined.filter(a => !DISMISSED.includes(a.id));
       state.live = true;
       state.fetchedAt = new Date().toISOString();
@@ -1989,7 +2037,7 @@ function cardHTML(a, big){
   const sourceColor = isPerf ? "#7BE33D" : "#2DD4BF";
   const liked = isLiked(a.id);
   return `
-    <a class="card ${big?'big':''}" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">
+    <a class="card ${big?'big':''}" data-card-id="${esc(a.id)}" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">
       <div class="card-top" style="background:${topBar}"></div>
       <div class="card-icons">
         <button class="dismiss-btn" data-dismiss-id="${esc(a.id)}" aria-label="Masquer">
@@ -2007,7 +2055,7 @@ function cardHTML(a, big){
         <div class="meta-row">
           <span class="source" style="color:${sourceColor}">${esc(a.source)}</span>
           <span class="meta-date">· ${esc(a.date)}</span>
-          ${isNewSincePreviousVisit(a.publishedAt) ? `<span class="badge badge-new">🆕 Nouveau</span>` : ""}
+          ${isNewSincePreviousVisit(a.publishedAt, a.id) ? `<span class="badge badge-new">🆕 Nouveau</span>` : ""}
           ${a.citationTrending ? `<span class="badge badge-trending">📈 ${a.citationCount} citations</span>` : ""}
           ${isPerf ? `<span class="badge badge-perf">Performance</span>` : ""}
           ${a.followed ? `<span class="badge badge-followed">Auteur suivi</span>` : ""}
@@ -2042,7 +2090,7 @@ function getFilteredList(){
     // le filtre "date de publication" n'a pas de sens ici, il ne doit surtout pas s'appliquer.
     // Déjà trié par citations à la collecte ; on retrie par date si l'utilisateur préfère ça.
     list = state.mustReadSort === "date"
-      ? [...MUST_READ_ARTICLES].sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0))
+      ? [...MUST_READ_ARTICLES].sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt))
       : MUST_READ_ARTICLES;
   } else if (state.tab === "auteurs") {
     list = ARTICLES.filter(a => {
@@ -2114,14 +2162,14 @@ function podcastShowCardHTML(show){
 function podcastCardHTML(ep){
   const spotifyUrl = `https://open.spotify.com/search/${encodeURIComponent(ep.podcast + " " + ep.title)}`;
   return `
-    <div class="card">
+    <div class="card" data-card-id="${esc(ep.id)}">
       <div class="card-top" style="background:linear-gradient(90deg,#8A6BB1,#2DD4BF)"></div>
       <div class="card-body">
         <div class="meta-row">
           <span class="source" style="color:#8A6BB1">${esc(ep.podcast)}</span>
           <span class="meta-date">· ${esc(ep.date)}</span>
           ${ep.duration ? `<span class="meta-date">· ${esc(ep.duration)}</span>` : ""}
-          ${isNewSincePreviousVisit(ep.publishedAt) ? `<span class="badge badge-new">🆕 Nouveau</span>` : ""}
+          ${isNewSincePreviousVisit(ep.publishedAt, ep.id) ? `<span class="badge badge-new">🆕 Nouveau</span>` : ""}
         </div>
         <h3 class="title">${esc(ep.title)}</h3>
         <p class="summary">${esc(ep.description || "Pas de résumé disponible pour cet épisode.")}</p>
@@ -2177,6 +2225,9 @@ function renderPodcastCards(){
   const list = getFilteredPodcasts();
   const backBtn = state.podcastView ? `<button class="settings-back" id="podcastBackBtn" style="margin:0 0 12px;">← Tous les podcasts</button>` : "";
   document.getElementById("cardList").innerHTML = backBtn + list.map(podcastCardHTML).join("");
+  document.querySelectorAll(".card[data-card-id]").forEach(card => {
+    card.addEventListener("click", () => markSeen(card.dataset.cardId));
+  });
   const emptyText = state.podcastsLoading ? "Chargement des épisodes…" : "Rien à afficher ici pour l'instant.";
   document.getElementById("emptyMsg").innerHTML = list.length === 0 ? `<p class="empty-state">${emptyText}</p>` : "";
   const back = document.getElementById("podcastBackBtn");
@@ -2207,6 +2258,9 @@ function renderCards(){
   document.getElementById("emptyMsg").innerHTML = list.length === 0 ? `<p class="empty-state">${emptyText}</p>` : "";
   document.querySelectorAll(".ttbtn[data-sort]").forEach(btn => {
     btn.onclick = () => { state.mustReadSort = btn.dataset.sort; renderCards(); };
+  });
+  document.querySelectorAll(".card[data-card-id]").forEach(card => {
+    card.addEventListener("click", () => markSeen(card.dataset.cardId));
   });
   document.querySelectorAll(".like-btn").forEach(btn => {
     btn.onclick = (e) => {
@@ -2245,6 +2299,7 @@ function renderCards(){
   document.querySelectorAll(".summary-toggle").forEach(btn => {
     btn.onclick = async (e) => {
       e.preventDefault(); e.stopPropagation();
+      markSeen(btn.dataset.id);
       const panel = btn.parentElement.nextElementSibling;
       if (panel.classList.contains("open")) {
         panel.classList.remove("open");
@@ -2298,11 +2353,8 @@ function renderTabbar(){
   });
 }
 
-// À la prochaine version après v99, passer à "2.0" plutôt que "v100" (décision prise avec
-// Baptiste) — marque symboliquement la fin de la phase de construction/correction rapide et le
-// passage en phase de lancement public. Ensuite : 2.1, 2.2, 2.3... pour les mises à jour normales,
-// 3.0 réservé à une vraie refonte future.
-const APP_BUILD = "v97 — 2026-08-22 17:58 UTC";
+// Prochaine étape après 2.x : 3.0 réservé à une vraie refonte future.
+const APP_BUILD = "2.0 — 2026-08-22 21:34 UTC";
 function sourcesHTML(){
   return `
     <div class="sources-list">
@@ -2543,7 +2595,8 @@ searchInput.addEventListener("input", () => {
         const existingIds = new Set(ARTICLES.map(a => a.id));
         const fresh = liveResults.filter(a => !existingIds.has(a.id));
         if (fresh.length) {
-          ARTICLES = ARTICLES.concat(fresh).sort((a,b) => new Date(b.publishedAt||0) - new Date(a.publishedAt||0));
+          recordFirstSeen(fresh, existingIds);
+          ARTICLES = ARTICLES.concat(fresh).sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt));
         }
       }
     } finally {
