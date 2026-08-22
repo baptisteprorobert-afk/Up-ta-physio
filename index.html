@@ -46,6 +46,24 @@
   .logo-text::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 60%;
     background: linear-gradient(90deg, #FF4D8D, #2DD4BF); border-radius: 2px; }
   .logo-text .accent { margin-left: 4px; }
+  .onboarding-overlay { position: fixed; inset: 0; z-index: 200; background: var(--bg); display: flex;
+    align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
+  .onboarding-card { max-width: 420px; width: 100%; text-align: center; padding: 12px 4px 4px; }
+  .onboarding-bolt { display: flex; justify-content: center; margin-bottom: 18px; }
+  .onboarding-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 30px;
+    line-height: 1.15; color: var(--text); margin: 0 0 14px; }
+  .onboarding-lead { font-size: 14.5px; color: var(--text2); line-height: 1.5; margin: 0 0 22px; }
+  .onboarding-features { display: flex; flex-direction: column; gap: 12px; text-align: left;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 20px; }
+  .onboarding-feat { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--text2); line-height: 1.4; }
+  .onboarding-feat-icon { flex-shrink: 0; font-size: 17px; width: 22px; text-align: center; }
+  .onboarding-thanks { font-size: 13.5px; color: var(--text2); line-height: 1.5; margin: 0 0 20px; font-style: italic; }
+  .onboarding-cta { width: 100%; padding: 15px; border-radius: 14px; border: none; color: #fff;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.3px;
+    background: linear-gradient(90deg, #FF4D8D, #2DD4BF); margin-bottom: 16px; }
+  .onboarding-checkbox { display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 12.5px; color: var(--text3); }
+  .onboarding-checkbox input { width: 16px; height: 16px; accent-color: #FF4D8D; }
   .date { font-size: 10px; color: var(--text3); }
   .topbar-actions { display: flex; align-items: center; gap: 8px; }
   .refresh-btn { position: relative; background: var(--surface); border: 1px solid var(--border); color: var(--text2); width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
@@ -245,6 +263,30 @@
       </button>
     </div>
     <div class="filter-sheet-body" id="settingsBody" style="padding: 4px 16px 20px;"></div>
+  </div>
+</div>
+
+<div id="onboardingOverlay" class="onboarding-overlay" style="display:none">
+  <div class="onboarding-card">
+    <div class="onboarding-bolt">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="url(#obGrad)" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z" fill="url(#obGrad)" stroke="none"/><defs><linearGradient id="obGrad" x1="0" y1="0" x2="24" y2="24"><stop offset="0" stop-color="#FF4D8D"/><stop offset="1" stop-color="#2DD4BF"/></linearGradient></defs></svg>
+    </div>
+    <h2 class="onboarding-title">Bienvenue sur<br>Up ta Physio 👋</h2>
+    <p class="onboarding-lead">Les dernières études en kiné et sport, résumées en français et notées automatiquement — en direct depuis PubMed, Europe PMC et Semantic Scholar.</p>
+    <div class="onboarding-features">
+      <div class="onboarding-feat"><span class="onboarding-feat-icon">⭐</span><span>Une note de fiabilité automatique sur chaque étude</span></div>
+      <div class="onboarding-feat"><span class="onboarding-feat-icon">👤</span><span>Suis tes auteurs de référence, personnalisable à tout moment</span></div>
+      <div class="onboarding-feat"><span class="onboarding-feat-icon">🏷️</span><span>Des mots-clés à toi pour filtrer ce qui t'intéresse vraiment</span></div>
+      <div class="onboarding-feat"><span class="onboarding-feat-icon">📚</span><span>Un onglet Incontournables : les articles les plus cités</span></div>
+      <div class="onboarding-feat"><span class="onboarding-feat-icon">🎧</span><span>Les meilleurs podcasts kiné/sport en français</span></div>
+      <div class="onboarding-feat"><span class="onboarding-feat-icon">⚙️</span><span>Tout se personnalise depuis le ⚙️ en haut à droite</span></div>
+    </div>
+    <p class="onboarding-thanks">Merci infiniment de nous faire confiance et d'utiliser l'appli 🙏 — bonne veille !</p>
+    <button id="onboardingCloseBtn" class="onboarding-cta">C'est parti !</button>
+    <label class="onboarding-checkbox">
+      <input type="checkbox" id="onboardingDontShow" checked>
+      <span>Ne plus afficher ce message</span>
+    </label>
   </div>
 </div>
 
@@ -1538,10 +1580,20 @@ async function liveKeywordSearch(term){
   const translated = await translateToEn(q);
   KEYWORD_TRANSLATIONS[normText(q)] = translated;
   const terms = normText(translated) !== normText(q) ? [q, translated] : [q];
+  // Si le terme tapé correspond à un auteur suivi, on réutilise le pipeline dédié (nom seul,
+  // plafond 30, tri par date — voir pubmedSearchAuthor/europePmcSearchAuthor) plutôt que de se
+  // contenter de searchAuthorAcrossSources seul, qui a une couverture plus faible. Le filtre de
+  // domaine juste en dessous protège quand même contre les homonymes, comme pour tout le reste.
+  const followedMatch = AUTHORS.find(au => normSurname(au.surname) === normSurname(q));
   try {
     const resultSets = await Promise.all([
       ...terms.map(t => searchTermAcrossSources(t, minPm, maxPm, minIso, maxIso)),
       searchAuthorAcrossSources(q, minPm, maxPm, minIso, maxIso),
+      ...(followedMatch ? [
+        pubmedSearchAuthor(followedMatch.surname, authorInitials(followedMatch.full))
+          .then(ids => { const zm = {}; ids.forEach(id => zm[id] = []); return ids.length ? pubmedFetchAll(ids, zm) : []; }),
+        europePmcSearchAuthor(followedMatch.surname, authorInitials(followedMatch.full)),
+      ] : []),
     ]);
     let combined = [];
     resultSets.forEach(r => { combined = combined.concat(r); });
@@ -2039,7 +2091,7 @@ function renderTabbar(){
   });
 }
 
-const APP_BUILD = "v72 — 2026-08-22 12:16 UTC";
+const APP_BUILD = "v74 — 2026-08-22 12:27 UTC";
 function sourcesHTML(){
   return `
     <p class="settings-note" style="margin:0 0 14px;">Version : <b style="color:var(--text2)">${esc(APP_BUILD)}</b></p>
@@ -2105,7 +2157,7 @@ function renderSettingsBody(){
     body.innerHTML = `
       <button class="settings-back" id="settingsBackBtn">← Retour</button>
       <div class="sources-list">
-        <div class="src-item"><b>👋 Qui est derrière Up ta Physio</b><p>Je m'appelle Baptiste Robert, kinésithérapeute. Comme beaucoup d'entre nous, j'ai passé des heures à courir après la littérature scientifique entre deux patients : parcourir PubMed, trier ce qui est vraiment solide, traduire, recouper les sources — un travail nécessaire, mais qui grignote un temps qu'on n'a pas toujours. Up ta Physio est né de cette frustration très concrète : rendre la veille scientifique accessible en quelques minutes plutôt qu'en heures, pour que la profession dans son ensemble puisse s'appuyer plus facilement sur des données à jour. L'application est entièrement <b>gratuite</b> et le restera — l'objectif n'est pas commercial, c'est de faire avancer notre métier collectivement. Elle est encore jeune et continue de s'améliorer au fil des retours : si quelque chose te semble perfectible, dis-le sur Instagram, chaque message compte.</p></div>
+        <div class="src-item"><b>👋 Qui est derrière Up ta Physio</b><p>Je m'appelle Baptiste Robert, kinésithérapeute. Comme beaucoup d'entre nous, j'ai passé des heures à courir après la littérature scientifique entre deux patients : parcourir PubMed, trier ce qui est vraiment solide, traduire, recouper les sources — un travail nécessaire, mais qui grignote un temps qu'on n'a pas toujours. Up ta Physio est né de cette frustration très concrète : rendre la veille scientifique accessible en quelques minutes plutôt qu'en heures, pour que la profession dans son ensemble puisse s'appuyer plus facilement sur des données à jour. L'application est entièrement <b>gratuite</b> et le restera — l'objectif n'est pas commercial, c'est de faire avancer notre métier collectivement. Elle est encore jeune et continue de s'améliorer au fil des retours : si quelque chose te semble perfectible, dis-le sur Instagram, chaque message compte.<br><br>Un grand merci à <b>Sacha Toussaint</b>, qui m'a beaucoup aidé sur ce projet.</p></div>
         <div class="src-item"><b>Ce que cette application n'est pas</b><p>Up ta Physio n'est pas un dispositif médical, ne pose pas de diagnostic et ne remplace en aucun cas le jugement clinique, la formation continue, ou la lecture critique des publications scientifiques. C'est un outil pour repérer plus vite ce qui pourrait t'intéresser — pas une source de vérité.</p></div>
         <div class="src-item"><b>Sur les notes de fiabilité</b><p>Chaque note (étoiles, type d'étude) est calculée <b>automatiquement</b> à partir de mots-clés détectés dans le titre et le résumé — ce n'est pas une évaluation par un expert, et elle peut se tromper. Utilise-la comme un premier repère, jamais comme un verdict final.</p></div>
         <div class="src-item"><b>Sur les résumés en français</b><p>Résumés et traductions sont générés automatiquement et peuvent contenir des approximations, en particulier sur la terminologie médicale précise. En cas de doute ou avant toute décision clinique, réfère-toi toujours à l'article original.</p></div>
@@ -2291,6 +2343,25 @@ searchClearBtn.onclick = () => { searchInput.value = ""; state.query = ""; searc
 setTheme(getTheme());
 render();
 loadArticles(false);
+
+// Onboarding plein écran au tout premier lancement — ne réapparaît plus tant que la case
+// "Ne plus afficher" est cochée (cochée par défaut) au moment de la fermeture.
+const ONBOARDING_SEEN_KEY = "kine-onboarding-seen-v1";
+try {
+  if (!localStorage.getItem(ONBOARDING_SEEN_KEY)) {
+    document.getElementById("onboardingOverlay").style.display = "flex";
+  }
+} catch(e){}
+const onboardingCloseBtn = document.getElementById("onboardingCloseBtn");
+if (onboardingCloseBtn) {
+  onboardingCloseBtn.onclick = () => {
+    const dontShow = document.getElementById("onboardingDontShow");
+    if (dontShow && dontShow.checked) {
+      try { localStorage.setItem(ONBOARDING_SEEN_KEY, "1"); } catch(e){}
+    }
+    document.getElementById("onboardingOverlay").style.display = "none";
+  };
+}
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
