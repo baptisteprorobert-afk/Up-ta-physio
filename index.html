@@ -115,6 +115,7 @@
   .search-row svg { flex-shrink: 0; }
   .search-clear { background: none; color: var(--text4); font-size: 14px; padding: 2px 4px; }
   .chiprow { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; }
+  .chiprow-wrap { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 12px; }
   .chiprow.secondary { padding-top: 0; }
   .filter-label { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text4); padding: 0 16px; margin-top: 4px; }
   .chip { flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 13px;
@@ -241,6 +242,7 @@
     <div class="filter-sheet-body">
       <p class="filter-label">Zone</p>
       <div class="chiprow" id="zoneChips"></div>
+      <div class="chiprow-wrap" id="muscleSubmenu" style="display:none;"></div>
       <p class="filter-label">Date de publication</p>
       <div class="chiprow secondary" id="dateChips"></div>
       <p class="filter-label">Qualité (note Claude)</p>
@@ -348,12 +350,12 @@ const ZONES = [
   { id: "muscle_mollet", label: "Gastrocnémiens/Soléaire", pubmed: '(gastrocnemius[Title/Abstract] OR soleus[Title/Abstract] OR "calf muscle"[Title/Abstract])', plain: '(gastrocnemius OR soleus OR "calf muscle")', s2: "gastrocnemius soleus calf muscle injury rehabilitation" },
   { id: "muscle_quadriceps", label: "Quadriceps", pubmed: '(quadriceps[Title/Abstract])', plain: '(quadriceps)', s2: "quadriceps muscle injury rehabilitation" },
   { id: "muscle_fessiers", label: "Fessiers", pubmed: '(gluteus[Title/Abstract] OR gluteal[Title/Abstract])', plain: '(gluteus OR gluteal)', s2: "gluteal gluteus muscle rehabilitation" },
-  { id: "muscle_adducteurs", label: "Adducteurs", pubmed: '(adductor[Title/Abstract] OR groin[Title/Abstract])', plain: '(adductor OR groin)', s2: "adductor groin muscle injury rehabilitation" },
-  { id: "muscle_deltoide", label: "Deltoïde", pubmed: '(deltoid[Title/Abstract])', plain: '(deltoid)', s2: "deltoid muscle shoulder rehabilitation" },
+  { id: "muscle_trapeze", label: "Trapèze", pubmed: '(trapezius[Title/Abstract])', plain: '(trapezius)', s2: "trapezius muscle shoulder rehabilitation" },
+  { id: "muscle_bicepstriceps", label: "Biceps/Triceps", pubmed: '(biceps[Title/Abstract] OR triceps[Title/Abstract])', plain: '(biceps OR triceps)', s2: "biceps triceps muscle injury rehabilitation" },
 ];
 // Identifiants des zones qui apparaissent regroupées sous la puce dépliable "Système musculaire"
 // plutôt qu'affichées à plat comme les autres — voir renderZoneChips.
-const MUSCLE_ZONE_IDS = ["muscle_ischio", "muscle_mollet", "muscle_quadriceps", "muscle_fessiers", "muscle_adducteurs", "muscle_deltoide"];
+const MUSCLE_ZONE_IDS = ["muscle_ischio", "muscle_mollet", "muscle_quadriceps", "muscle_fessiers", "muscle_trapeze", "muscle_bicepstriceps"];
 
 const DEFAULT_AUTHORS = [
   { full: "François Fourchet", surname: "Fourchet" },
@@ -1857,17 +1859,25 @@ function starsHTML(n){
 
 function renderZoneChips(){
   const el = document.getElementById("zoneChips");
+  const submenuEl = document.getElementById("muscleSubmenu");
   const flatZones = ZONES.filter(z => !MUSCLE_ZONE_IDS.includes(z.id));
   const chips = [{id:"all", label:"Tout"}, ...flatZones];
   const muscleActive = MUSCLE_ZONE_IDS.includes(state.zone);
   const flatHTML = chips.map(z => `<button class="chip ${state.zone===z.id?'active':''}" data-zone="${z.id}">${esc(z.label)}</button>`).join("");
   const parentLabel = muscleActive ? ZONES.find(z => z.id === state.zone)?.label : "Système musculaire";
-  const muscleParentHTML = `<button class="chip ${muscleActive?'active':''}" id="muscleGroupToggle">${esc(parentLabel)} ${state.muscleMenuOpen ? "▲" : "▼"}</button>`;
-  // Sous-puces ajoutées dans la même ligne défilante (pas de div imbriqué, qui casserait le
-  // flex/overflow-x existant) — juste après la puce parente, avec un style légèrement distinct.
-  const muscleSubHTML = state.muscleMenuOpen ? ZONES.filter(z => MUSCLE_ZONE_IDS.includes(z.id)).map(z => `<button class="chip chip-sub ${state.zone===z.id?'active':''}" data-zone="${z.id}">${esc(z.label)}</button>`).join("") : "";
-  el.innerHTML = flatHTML + muscleParentHTML + muscleSubHTML;
+  const muscleParentHTML = `<button class="chip ${muscleActive||state.muscleMenuOpen?'active':''}" id="muscleGroupToggle">${esc(parentLabel)} ${state.muscleMenuOpen ? "▲" : "▼"}</button>`;
+  el.innerHTML = flatHTML + muscleParentHTML;
+  // Sous-menu sur sa propre ligne, en dessous, plutôt que collé dans la même ligne défilante —
+  // beaucoup plus visible.
+  if (state.muscleMenuOpen) {
+    submenuEl.style.display = "flex";
+    submenuEl.innerHTML = ZONES.filter(z => MUSCLE_ZONE_IDS.includes(z.id)).map(z => `<button class="chip chip-sub ${state.zone===z.id?'active':''}" data-zone="${z.id}">${esc(z.label)}</button>`).join("");
+  } else {
+    submenuEl.style.display = "none";
+    submenuEl.innerHTML = "";
+  }
   el.querySelectorAll("button[data-zone]").forEach(b => b.onclick = () => { state.zone = b.dataset.zone; state.muscleMenuOpen = false; render(); });
+  submenuEl.querySelectorAll("button[data-zone]").forEach(b => b.onclick = () => { state.zone = b.dataset.zone; state.muscleMenuOpen = false; render(); });
   const toggle = document.getElementById("muscleGroupToggle");
   if (toggle) toggle.onclick = () => { state.muscleMenuOpen = !state.muscleMenuOpen; render(); };
 }
@@ -2292,7 +2302,7 @@ function renderTabbar(){
 // Baptiste) — marque symboliquement la fin de la phase de construction/correction rapide et le
 // passage en phase de lancement public. Ensuite : 2.1, 2.2, 2.3... pour les mises à jour normales,
 // 3.0 réservé à une vraie refonte future.
-const APP_BUILD = "v95 — 2026-08-22 17:35 UTC";
+const APP_BUILD = "v96 — 2026-08-22 17:53 UTC";
 function sourcesHTML(){
   return `
     <div class="sources-list">
@@ -2312,7 +2322,7 @@ function sourcesHTML(){
 function fonctionnementHTML(){
   return `
     <div class="sources-list">
-      <div class="src-item"><b>Zones suivies</b><p>Système tendineux, cheville/pied, genou, hanche, épaule, coude, poignet, rachis, SNC (système nerveux central), SNP (système nerveux périphérique), cardio-respiratoire (incluant le volet vasculaire artériel/veineux), et un groupe déplié "Système musculaire" (ischio-jambiers, gastrocnémiens/soléaire, quadriceps, fessiers, adducteurs, deltoïde). Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
+      <div class="src-item"><b>Zones suivies</b><p>Système tendineux, cheville/pied, genou, hanche, épaule, coude, poignet, rachis, SNC (système nerveux central), SNP (système nerveux périphérique), cardio-respiratoire (incluant le volet vasculaire artériel/veineux), et un groupe déplié "Système musculaire" (ischio-jambiers, gastrocnémiens/soléaire, quadriceps, fessiers, trapèze, biceps/triceps — liste appelée à s'élargir). Cette sélection est fixe pour l'instant — pas encore personnalisable zone par zone.</p></div>
       <div class="src-item"><b>Auteurs suivis</b><p>Liste entièrement personnalisable depuis Paramètres → Auteurs suivis : ajoute ou retire qui tu veux, à tout moment. Chaque auteur suivi bénéficie d'une recherche dédiée par nom, sans limite de date (ses 30 derniers articles par source, même anciens) — le reste de l'application reste limité aux 90 derniers jours.</p></div>
       <div class="src-item"><b>Onglet Performance</b><p>Recherche dédiée sur le retour au sport et la préparation physique, en complément du contenu Sportsmith.</p></div>
       <div class="src-item"><b>Note sur 5 étoiles</b><p>Calculée automatiquement à partir de 3 critères : <b>le type d'étude</b> (méta-analyse et revue systématique en haut, essai randomisé au-dessus de la moyenne, cohorte dans la moyenne, étude de cas/pilote/protocole en dessous), <b>la taille d'échantillon</b> quand elle est détectable dans le résumé, et <b>la revue</b> (bonus pour une publication dans une revue de référence : AJSM, BJSM, JOSPT, Sports Medicine...). Le détail du calcul est disponible sous chaque note, pour chaque article.</p></div>
