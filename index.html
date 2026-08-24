@@ -756,11 +756,19 @@ const CACHE_KEY = "kine-sport-cache-v1";
 // pool (pas sa date de publication) : un article ancien qui remonte pour la première fois lors
 // d'une actualisation (nouvel auteur suivi, nouveau mot-clé...) doit pouvoir être marqué "Nouveau".
 const SEEN_KEY = "kine-seen-articles-v1";
+const SEEN_IDS_CAP = 1000; // large marge : le badge "Nouveau" ne regarde de toute façon que les 3-4 derniers jours
 let SEEN_IDS = new Set();
 try { SEEN_IDS = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); } catch(e){}
 function markSeen(id){
   if (!id || SEEN_IDS.has(id)) return;
   SEEN_IDS.add(id);
+  // Évite une croissance illimitée du stockage sur plusieurs mois/années d'usage : au-delà du
+  // plafond, on retire les entrées les plus anciennes (les Sets JS préservent l'ordre d'insertion).
+  if (SEEN_IDS.size > SEEN_IDS_CAP) {
+    const excess = SEEN_IDS.size - SEEN_IDS_CAP;
+    const it = SEEN_IDS.values();
+    for (let i = 0; i < excess; i++) SEEN_IDS.delete(it.next().value);
+  }
   try { localStorage.setItem(SEEN_KEY, JSON.stringify([...SEEN_IDS])); } catch(e){}
 }
 const FIRST_SEEN_POOL_KEY = "kine-first-seen-pool-v1";
@@ -844,11 +852,18 @@ function toggleLike(article){
 }
 
 const DISMISSED_KEY = "kine-dismissed-v1";
+const DISMISSED_CAP = 2000; // masquage plus intentionnel qu'un simple clic, on garde plus de marge
 function loadDismissed(){ try { const raw = localStorage.getItem(DISMISSED_KEY); return raw ? JSON.parse(raw) : []; } catch(e){ return []; } }
 function saveDismissed(){ try { localStorage.setItem(DISMISSED_KEY, JSON.stringify(DISMISSED)); } catch(e){} }
 let DISMISSED = loadDismissed();
 function dismissArticle(id){
-  if (!DISMISSED.includes(id)) { DISMISSED.push(id); saveDismissed(); }
+  if (!DISMISSED.includes(id)) {
+    DISMISSED.push(id);
+    // Évite une croissance illimitée sur plusieurs mois/années d'usage : on retire les plus
+    // anciens masquages au-delà du plafond (le tableau est rempli dans l'ordre chronologique).
+    if (DISMISSED.length > DISMISSED_CAP) DISMISSED = DISMISSED.slice(DISMISSED.length - DISMISSED_CAP);
+    saveDismissed();
+  }
   ARTICLES = ARTICLES.filter(a => a.id !== id);
   render();
 }
@@ -962,6 +977,7 @@ function buildCatchySummary(a){
 }
 
 const SUMMARY_FR_KEY = "kine-fr-summary-v1";
+const SUMMARY_FR_CACHE_CAP = 300;
 function loadSummaryCache(){ try { return JSON.parse(localStorage.getItem(SUMMARY_FR_KEY) || "{}"); } catch(e){ return {}; } }
 function saveSummaryCache(){ try { localStorage.setItem(SUMMARY_FR_KEY, JSON.stringify(SUMMARY_FR_CACHE)); } catch(e){} }
 let SUMMARY_FR_CACHE = loadSummaryCache();
@@ -1003,6 +1019,11 @@ async function getFrenchSummary(a){
     result = { hook, theme, methodo, resultats, conclusion };
   }
   SUMMARY_FR_CACHE[a.id] = result;
+  // Simple cache de performance (évite de retraduire un résumé déjà vu) : pas besoin de le garder
+  // indéfiniment. Au-delà du plafond, on retire l'entrée la plus ancienne (l'ordre des clés d'un
+  // objet JS suit l'ordre d'insertion pour des clés textuelles).
+  const keys = Object.keys(SUMMARY_FR_CACHE);
+  if (keys.length > SUMMARY_FR_CACHE_CAP) delete SUMMARY_FR_CACHE[keys[0]];
   saveSummaryCache();
   return result;
 }
@@ -1311,6 +1332,7 @@ const PODCASTS = [
   { id: "1461102355", fallbackName: "ABD Podcast" }, // préparation physique, réathlétisation, récupération
   { id: "1651108430", fallbackName: "PERFORMANCE" }, // Sylvain Jooris, préparateur physique basket pro
   { id: "1694381521", fallbackName: "Kinéaste" }, // kiné du sport
+  { id: "1513807019", fallbackName: "Objectif Performance" }, // Julien Astouric, kiné/prépa physique — aussi hébergé chez Ausha, si la résolution automatique échoue comme pour les 3 suivants, lui trouver son flux réel et l'ajouter en knownFeedUrl
   // Ces 3 sont hébergés chez Ausha et la résolution automatique via Apple Podcasts échouait
   // régulièrement pour eux (raison exacte incertaine — timeout, ou l'hébergeur ne renvoie pas
   // toujours feedUrl à l'API iTunes) — flux RSS réel trouvé directement et codé en dur en secours.
@@ -2385,7 +2407,7 @@ function renderTabbar(){
 }
 
 // Prochaine étape après 2.x : 3.0 réservé à une vraie refonte future.
-const APP_BUILD = "2.0.1 — 2026-08-23 12:20 UTC";
+const APP_BUILD = "2.0.3 — 2026-08-23 12:52 UTC";
 function sourcesHTML(){
   return `
     <div class="sources-list">
