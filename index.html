@@ -751,6 +751,28 @@ const WINDOW_DAYS = 90;
 const PRUNE_DAYS = 120; // au-delà, un article sort du pool même s'il avait déjà été vu
 const RETMAX = 12;
 const CACHE_KEY = "kine-sport-cache-v1";
+
+// Sauvegarde le pool en localStorage. Si le stockage est plein (QuotaExceededError, courant
+// avec un long historique d'articles), on élague les plus anciens et on retente une fois avant
+// d'abandonner — sinon une sauvegarde ratée repassait inaperçue et l'app revenait au pool
+// précédent à la prochaine ouverture, alors même que les nouveaux articles s'étaient bien affichés.
+function saveArticlesCache(fetchedAt, articles){
+  const payload = { fetchedAt, articles };
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+    return true;
+  } catch(e) {
+    const trimmed = [...articles].sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt)).slice(0, Math.ceil(articles.length * 0.7));
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ fetchedAt, articles: trimmed }));
+      ARTICLES = trimmed;
+      return true;
+    } catch(e2) {
+      return false;
+    }
+  }
+}
+
 // Le badge "Nouveau" doit disparaître soit après 24h, soit au clic sur l'article précis — jamais
 // le clic comme unique porte de sortie. Basé sur le moment où l'app a DÉCOUVERT l'article dans le
 // pool (pas sa date de publication) : un article ancien qui remonte pour la première fois lors
@@ -1933,7 +1955,7 @@ async function loadArticles(force){
       ARTICLES = combined.filter(a => !DISMISSED.includes(a.id));
       state.live = true;
       state.fetchedAt = new Date().toISOString();
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ fetchedAt: state.fetchedAt, articles: ARTICLES }));
+      saveArticlesCache(state.fetchedAt, ARTICLES);
     }
   } catch(e) {
     // reste sur les données précédentes
@@ -2407,7 +2429,7 @@ function renderTabbar(){
 }
 
 // Prochaine étape après 2.x : 3.0 réservé à une vraie refonte future.
-const APP_BUILD = "2.0.3 — 2026-08-23 12:52 UTC";
+const APP_BUILD = "2.0.5 — 2026-08-28 UTC";
 function sourcesHTML(){
   return `
     <div class="sources-list">
