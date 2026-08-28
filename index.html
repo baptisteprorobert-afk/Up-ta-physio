@@ -752,25 +752,33 @@ const PRUNE_DAYS = 120; // au-delà, un article sort du pool même s'il avait d�
 const RETMAX = 12;
 const CACHE_KEY = "kine-sport-cache-v1";
 
-// Sauvegarde le pool en localStorage. Si le stockage est plein (QuotaExceededError, courant
-// avec un long historique d'articles), on élague les plus anciens et on retente une fois avant
-// d'abandonner — sinon une sauvegarde ratée repassait inaperçue et l'app revenait au pool
-// précédent à la prochaine ouverture, alors même que les nouveaux articles s'étaient bien affichés.
-function saveArticlesCache(fetchedAt, articles){
-  const payload = { fetchedAt, articles };
+// Sauvegarde générique avec repli : si le stockage est plein (QuotaExceededError, courant avec
+// un long historique), on élague la liste (garde les `keepRatio` premiers, déjà triés côté
+// appelant) et on retente une fois avant d'abandonner. Évite qu'une sauvegarde ratée passe
+// inaperçue et que l'app revienne aux anciennes données à la prochaine ouverture, alors même
+// que les nouvelles s'étaient bien affichées sur le moment.
+function saveListWithFallback(key, payload, listKey, keepRatio){
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-    return true;
+    localStorage.setItem(key, JSON.stringify(payload));
+    return payload[listKey];
   } catch(e) {
-    const trimmed = [...articles].sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt)).slice(0, Math.ceil(articles.length * 0.7));
+    const list = payload[listKey];
+    const trimmed = list.slice(0, Math.ceil(list.length * keepRatio));
+    const retryPayload = { ...payload, [listKey]: trimmed };
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ fetchedAt, articles: trimmed }));
-      ARTICLES = trimmed;
-      return true;
+      localStorage.setItem(key, JSON.stringify(retryPayload));
+      return trimmed;
     } catch(e2) {
-      return false;
+      return list; // même l'élagage n'a pas suffi : on garde tout en mémoire au moins pour cette session
     }
   }
+}
+
+function saveArticlesCache(fetchedAt, articles){
+  const sorted = [...articles].sort((a,b) => sortableTime(b.publishedAt) - sortableTime(a.publishedAt));
+  const kept = saveListWithFallback(CACHE_KEY, { fetchedAt, articles: sorted }, "articles", 0.7);
+  if (kept !== sorted) ARTICLES = kept;
+  return true;
 }
 
 // Le badge "Nouveau" doit disparaître soit après 24h, soit au clic sur l'article précis — jamais
@@ -864,7 +872,16 @@ const TYPE_FILTERS = [{id:"all",label:"Tous types"},{id:"meta",label:"Méta-anal
 
 const LIKED_KEY = "kine-liked-v1";
 function loadLiked(){ try { const raw = localStorage.getItem(LIKED_KEY); return raw ? JSON.parse(raw) : []; } catch(e){ return []; } }
-function saveLiked(){ try { localStorage.setItem(LIKED_KEY, JSON.stringify(LIKED)); } catch(e){} }
+// Les articles aimés n'ont volontairement aucune limite (voir LIKED plus bas) : si le stockage
+// est plein, on ne doit jamais en supprimer pour faire de la place. On libère plutôt de l'espace
+// du côté des caches re-téléchargeables (résumés FR, podcasts, incontournables) avant de retenter.
+function saveLiked(){
+  try { localStorage.setItem(LIKED_KEY, JSON.stringify(LIKED)); return; } catch(e){}
+  try { localStorage.removeItem(SUMMARY_FR_KEY); } catch(e2){}
+  try { localStorage.removeItem(PODCASTS_CACHE_KEY); } catch(e2){}
+  try { localStorage.removeItem(MUST_READ_CACHE_KEY); } catch(e2){}
+  try { localStorage.setItem(LIKED_KEY, JSON.stringify(LIKED)); } catch(e3){}
+}
 let LIKED = loadLiked();
 function isLiked(id){ return LIKED.some(a => a.id === id); }
 function toggleLike(article){
@@ -1433,7 +1450,7 @@ async function loadPodcasts(force){
   if (episodes.length) {
     PODCAST_EPISODES = episodes;
     PODCAST_SHOWS = shows;
-    try { localStorage.setItem(PODCASTS_CACHE_KEY, JSON.stringify({ fetchedAt: new Date().toISOString(), episodes, shows })); } catch(e){}
+    saveListWithFallback(PODCASTS_CACHE_KEY, { fetchedAt: new Date().toISOString(), episodes, shows }, "episodes", 0.7);
   }
 }
 let PODCAST_EPISODES = [];
@@ -1527,7 +1544,7 @@ async function loadMustReadArticles(force){
     .slice(0, 60);
   if (finalized.length) {
     MUST_READ_ARTICLES = finalized;
-    try { localStorage.setItem(MUST_READ_CACHE_KEY, JSON.stringify({ fetchedAt: new Date().toISOString(), articles: finalized })); } catch(e){}
+    saveListWithFallback(MUST_READ_CACHE_KEY, { fetchedAt: new Date().toISOString(), articles: finalized }, "articles", 0.7);
   }
 }
 let MUST_READ_ARTICLES = [];
@@ -2429,7 +2446,7 @@ function renderTabbar(){
 }
 
 // Prochaine étape après 2.x : 3.0 réservé à une vraie refonte future.
-const APP_BUILD = "2.0.5 — 2026-08-28 UTC";
+const APP_BUILD = "2.0.6 — 2026-08-28 UTC";
 function sourcesHTML(){
   return `
     <div class="sources-list">
