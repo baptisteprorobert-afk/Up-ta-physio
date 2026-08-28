@@ -846,7 +846,7 @@ function saveLiked(){ try { localStorage.setItem(LIKED_KEY, JSON.stringify(LIKED
 let LIKED = loadLiked();
 function isLiked(id){ return LIKED.some(a => a.id === id); }
 function toggleLike(article){
-  LIKED = isLiked(article.id) ? LIKED.filter(a => a.id !== article.id) : [...LIKED, article];
+  LIKED = isLiked(article.id) ? LIKED.filter(a => a.id !== article.id) : [article, ...LIKED];
   saveLiked();
   render();
 }
